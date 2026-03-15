@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 from google import genai
 
 # ── Configuración ──────────────────────────────────────────────────────────────
-GEMINI_API_KEY   = st.secrets.get("GEMINI_API_KEY", "AIzaSyDqcU6EAm5VFKJq8qXa6oA-Cvk5sO-DMig")
-TELEGRAM_TOKEN   = st.secrets.get("TELEGRAM_TOKEN", "8699316221:AAHzZMalPaw224JjpbQFkI1i2MFe50JmupE")
-TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "6267952113")
-NEWSAPI_KEY      = st.secrets.get("NEWSAPI_KEY", "231afc3ea3d845fcae8acafe7f314c44")
+GEMINI_API_KEY   = st.secrets.get("GEMINI_API_KEY")
+TELEGRAM_TOKEN   = st.secrets.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
+NEWSAPI_KEY      = st.secrets.get("NEWSAPI_KEY")
 
 # ── Fuentes RSS ────────────────────────────────────────────────────────────────
 RSS_FEEDS = [
