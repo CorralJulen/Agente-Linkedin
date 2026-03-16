@@ -62,7 +62,7 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .stat-num { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #f0f0f8; }
 .stat-label { font-size: 11px; color: #7070a0; margin-top: 2px; }
 .racha-fire { color: #fbbf24; }
-.news-card { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 1.4rem 1.6rem; margin-bottom: 1rem; }
+.news-card { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 1.4rem 1.6rem; margin-bottom: 0.5rem; }
 .card-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 0.8rem; flex-wrap: wrap; }
 .source-pill { background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.3); color: #a78bfa; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; padding: 3px 12px; border-radius: 99px; }
 .sector-pill-banca { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
@@ -73,7 +73,6 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .card-desc { color: rgba(112,112,160,0.9); font-size: 13px; line-height: 1.65; }
 .section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7070a0; margin: 1.8rem 0 1rem; display: flex; align-items: center; gap: 10px; }
 .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
-.tono-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7070a0; margin-bottom: 0.8rem; }
 .opcion-card { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 0.5rem; font-size: 13px; line-height: 1.75; color: #d0d0e0; white-space: pre-wrap; word-break: break-word; }
 .opcion-card-recomendada { background: rgba(74,222,128,0.05); border: 1.5px solid rgba(74,222,128,0.4); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 0.5rem; font-size: 13px; line-height: 1.75; color: #d0d0e0; white-space: pre-wrap; word-break: break-word; }
 .recomendada-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.35); color: #4ade80; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; margin-bottom: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -84,6 +83,8 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .historial-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 .historial-fecha { font-size: 11px; color: #7070a0; }
 .historial-preview { font-size: 12px; color: rgba(240,240,248,0.7); line-height: 1.6; }
+.edicion-guiada-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #7070a0; margin-bottom: 8px; margin-top: 12px; }
+.en-box { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.2rem 1.4rem; font-size: 13px; line-height: 1.75; color: #d0d0e0; white-space: pre-wrap; word-break: break-word; margin-bottom: 1rem; }
 .li-card { background: #1b1f23; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem; }
 .li-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
 .li-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6c63ff, #9333ea); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: white; flex-shrink: 0; }
@@ -136,7 +137,6 @@ def extraer_imagen(entry) -> str:
     return ""
 
 def guardar_en_historial(post: str, noticia: dict, sector: str, tono: str):
-    """Guarda el post en el historial de session_state."""
     if "historial" not in st.session_state:
         st.session_state.historial = []
     etiqueta = SECTORES.get(sector, {}).get("etiqueta", sector)
@@ -151,7 +151,6 @@ def guardar_en_historial(post: str, noticia: dict, sector: str, tono: str):
     })
 
 def calcular_racha():
-    """Calcula posts esta semana y semanas consecutivas."""
     if "historial" not in st.session_state or not st.session_state.historial:
         return 0, 0
     ahora = datetime.now()
@@ -161,7 +160,6 @@ def calcular_racha():
         1 for h in st.session_state.historial
         if datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M") >= inicio_semana
     )
-    # Semanas consecutivas
     semanas = set()
     for h in st.session_state.historial:
         d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
@@ -181,6 +179,40 @@ def calcular_racha():
         else:
             break
     return posts_semana, semanas_consecutivas
+
+def parsear_un_feed(sector: str, excluir_urls: list) -> dict:
+    """Obtiene una noticia nueva de un sector, excluyendo URLs ya mostradas."""
+    hace_5_dias = datetime.now() - timedelta(days=5)
+    cfg = SECTORES[sector]
+    feeds = cfg["feeds"]
+    random.shuffle(feeds)
+    for fuente, url in feeds:
+        try:
+            feed = feedparser.parse(url)
+            entradas = [e for e in feed.entries if e.get("link", "") not in excluir_urls]
+            random.shuffle(entradas)
+            for entry in entradas[:8]:
+                published = None
+                if hasattr(entry, "published_parsed") and entry.published_parsed:
+                    published = datetime(*entry.published_parsed[:6])
+                if published and published < hace_5_dias:
+                    continue
+                resumen = entry.get("summary", entry.get("description", ""))[:400]
+                titulo = entry.get("title", "")
+                if not titulo or len(resumen) < 80:
+                    continue
+                return {
+                    "fuente": fuente,
+                    "titulo": titulo,
+                    "resumen": resumen,
+                    "url": entry.get("link", ""),
+                    "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
+                    "imagen": extraer_imagen(entry),
+                    "_sector": sector,
+                }
+        except Exception:
+            pass
+    return None
 
 # ── Funciones ──────────────────────────────────────────────────────────────────
 
@@ -241,12 +273,10 @@ INSTRUCCIONES COMUNES:
 """
     prompt_a = base + "\nESTILO ADICIONAL: Analítico y técnico. Usa datos, cifras si las hay, jerga del sector."
     prompt_b = base + "\nESTILO ADICIONAL: Cercano y reflexivo. Más storytelling, tono humano y conversacional."
-
     resp_a = client.models.generate_content(model="gemini-flash-latest", contents=prompt_a)
     resp_b = client.models.generate_content(model="gemini-flash-latest", contents=prompt_b)
     post_a = resp_a.text.strip()
     post_b = resp_b.text.strip()
-
     prompt_rec = f"""Eres un experto en contenido LinkedIn para profesionales de consultoría y finanzas.
 Dada esta noticia:
 Título: {noticia['titulo']}
@@ -256,7 +286,6 @@ Resumen: {noticia['resumen']}
 - Versión B: cercana y reflexiva
 ¿Cuál encaja mejor? Responde SOLO con este JSON sin texto adicional ni markdown:
 {{"recomendada": "A" o "B", "razon": "Una frase corta explicando por qué (máximo 15 palabras)"}}"""
-
     try:
         resp_rec = client.models.generate_content(model="gemini-flash-latest", contents=prompt_rec)
         raw = resp_rec.text.strip().replace("```json", "").replace("```", "").strip()
@@ -266,7 +295,6 @@ Resumen: {noticia['resumen']}
     except Exception:
         recomendada = "A"
         razon = ""
-
     return post_a, post_b, recomendada, razon
 
 def generar_post(noticia: dict, perfil: str, tono: str = "aprendiendo") -> str:
@@ -287,6 +315,37 @@ INSTRUCCIONES:
 4. 5-8 hashtags al final.
 5. NO uses lenguaje corporativo vacío ni menciones que eres IA.
 Devuelve SOLO el texto del post.
+"""
+    response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
+    return response.text.strip()
+
+# ── NUEVO: edición guiada ──────────────────────────────────────────────────────
+def editar_post_guiado(post: str, instruccion: str) -> str:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    prompt = f"""Eres un editor experto de contenido LinkedIn.
+Tienes este post:
+
+{post}
+
+INSTRUCCIÓN: {instruccion}
+
+Aplica SOLO el cambio pedido. Mantén el resto del post igual.
+Devuelve SOLO el texto del post modificado, sin explicaciones.
+"""
+    response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
+    return response.text.strip()
+
+# ── NUEVO: versión en inglés ───────────────────────────────────────────────────
+def traducir_post_ingles(post: str) -> str:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    prompt = f"""Eres un experto en contenido LinkedIn para profesionales de consultoría y finanzas en mercados internacionales.
+
+Traduce y adapta este post de LinkedIn al inglés. No es una traducción literal — adapta el tono, las expresiones y los hashtags para que suene natural y profesional en inglés para una audiencia de Big 4, strategy consulting y banking.
+
+POST ORIGINAL:
+{post}
+
+Devuelve SOLO el texto del post en inglés, sin explicaciones.
 """
     response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
     return response.text.strip()
@@ -476,32 +535,22 @@ for key, val in [("noticias", []), ("post_generado", ""), ("noticia_elegida", No
                   ("sector_elegido", ""), ("sectores_data", {}),
                   ("post_a", ""), ("post_b", ""),
                   ("recomendada", "A"), ("razon", ""),
-                  ("tono_elegido", "aprendiendo"), ("historial", [])]:
+                  ("tono_elegido", "aprendiendo"), ("historial", []),
+                  ("post_en", "")]:
     if key not in st.session_state:
         st.session_state[key] = val
 
 # ── INICIO ─────────────────────────────────────────────────────────────────────
 if st.session_state.fase == "inicio":
-
-    # Stats racha
     posts_semana, semanas_consecutivas = calcular_racha()
     total_posts = len(st.session_state.historial)
     if total_posts > 0:
         fuego = "🔥" if semanas_consecutivas >= 2 else "📅"
         st.markdown(f"""
         <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-num">{total_posts}</div>
-                <div class="stat-label">posts generados</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-num">{posts_semana}</div>
-                <div class="stat-label">esta semana</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-num racha-fire">{fuego} {semanas_consecutivas}</div>
-                <div class="stat-label">semanas seguidas</div>
-            </div>
+            <div class="stat-card"><div class="stat-num">{total_posts}</div><div class="stat-label">posts generados</div></div>
+            <div class="stat-card"><div class="stat-num">{posts_semana}</div><div class="stat-label">esta semana</div></div>
+            <div class="stat-card"><div class="stat-num racha-fire">{fuego} {semanas_consecutivas}</div><div class="stat-label">semanas seguidas</div></div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -526,7 +575,6 @@ if st.session_state.fase == "inicio":
     if st.session_state.usadas:
         st.markdown(f"<div style='text-align:center;color:#7070a0;font-size:12px;margin-top:8px'>{len(st.session_state.usadas)} noticia{'s' if len(st.session_state.usadas)>1 else ''} ya usada{'s' if len(st.session_state.usadas)>1 else ''} — no se repetirán</div>", unsafe_allow_html=True)
 
-    # Botón historial
     if st.session_state.historial:
         st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
         if st.button("📚  Ver historial de posts", use_container_width=True):
@@ -554,12 +602,14 @@ elif st.session_state.fase == "historial":
 elif st.session_state.fase == "noticias":
     st.markdown('<div class="section-label">Elige una noticia</div>', unsafe_allow_html=True)
     pill_class = {"banca": "sector-pill-banca", "estrategia": "sector-pill-estrategia", "datos": "sector-pill-datos"}
+
     for i, n in enumerate(st.session_state.noticias):
         sector = n.get("_sector", "")
         cfg = SECTORES.get(sector, {})
         etiqueta = cfg.get("etiqueta", sector)
         pill = pill_class.get(sector, "source-pill")
         resumen_limpio = n["resumen"].replace("<", "").replace(">", "").replace("&", "&amp;")[:280]
+
         st.markdown(f"""
         <div class="news-card">
             <div class="card-meta">
@@ -571,12 +621,25 @@ elif st.session_state.fase == "noticias":
             <div class="card-desc">{resumen_limpio}</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("✦  Seleccionar esta noticia", key=f"sel_{i}", use_container_width=True):
-            st.session_state.noticia_elegida = n
-            st.session_state.sector_elegido = sector
-            st.session_state.fase = "elegir_tono"
-            st.rerun()
-        st.markdown("<div style='margin-bottom:0.5rem'></div>", unsafe_allow_html=True)
+
+        col_sel, col_ref = st.columns([3, 1])
+        with col_sel:
+            if st.button("✦  Seleccionar esta noticia", key=f"sel_{i}", use_container_width=True):
+                st.session_state.noticia_elegida = n
+                st.session_state.sector_elegido = sector
+                st.session_state.fase = "elegir_tono"
+                st.rerun()
+        with col_ref:
+            if st.button("↺ Cambiar", key=f"ref_{i}", use_container_width=True):
+                with st.spinner("Buscando otra noticia..."):
+                    urls_actuales = [x.get("url", "") for x in st.session_state.noticias]
+                    nueva = parsear_un_feed(sector, urls_actuales + st.session_state.usadas)
+                    if nueva:
+                        st.session_state.noticias[i] = nueva
+                    st.rerun()
+
+        st.markdown("<div style='margin-bottom:0.8rem'></div>", unsafe_allow_html=True)
+
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver"):
         st.session_state.fase = "inicio"
@@ -622,6 +685,7 @@ elif st.session_state.fase == "elegir_tono":
                 st.session_state.recomendada = recomendada
                 st.session_state.razon = razon
                 st.session_state.puntuacion = None
+                st.session_state.post_en = ""
                 st.session_state.usadas.append(n["url"])
                 st.session_state.fase = "elegir_post"
                 st.rerun()
@@ -645,21 +709,9 @@ elif st.session_state.fase == "elegir_post":
     """, unsafe_allow_html=True)
     rec = st.session_state.recomendada
     razon = st.session_state.razon
-    render_opcion(
-        post=st.session_state.post_a,
-        label="Versión A — Analítica y técnica",
-        es_recomendada=(rec == "A"),
-        razon=razon if rec == "A" else "",
-        key="elegir_a"
-    )
+    render_opcion(post=st.session_state.post_a, label="Versión A — Analítica y técnica", es_recomendada=(rec == "A"), razon=razon if rec == "A" else "", key="elegir_a")
     st.markdown("<div style='margin-bottom:1.5rem'></div>", unsafe_allow_html=True)
-    render_opcion(
-        post=st.session_state.post_b,
-        label="Versión B — Cercana y reflexiva",
-        es_recomendada=(rec == "B"),
-        razon=razon if rec == "B" else "",
-        key="elegir_b"
-    )
+    render_opcion(post=st.session_state.post_b, label="Versión B — Cercana y reflexiva", es_recomendada=(rec == "B"), razon=razon if rec == "B" else "", key="elegir_b")
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver a noticias"):
         st.session_state.fase = "noticias"
@@ -697,17 +749,81 @@ elif st.session_state.fase == "post":
 
     render_imagen_noticia(n)
 
-    tab1, tab2, tab3 = st.tabs(["✏️ Editar", "👁️ Vista previa LinkedIn", "📊 Puntuación"])
+    tab1, tab2, tab3, tab4 = st.tabs(["✏️ Editar", "🌍 Versión en inglés", "👁️ Vista previa", "📊 Puntuación"])
+
     with tab1:
         post_editado = st.text_area(
             label="", value=st.session_state.post_generado,
-            height=380, label_visibility="collapsed", key="editor"
+            height=320, label_visibility="collapsed", key="editor"
         )
         st.session_state.post_generado = post_editado
+
+        # ── Edición guiada ─────────────────────────────────────────────────────
+        st.markdown('<div class="edicion-guiada-label">✨ Edición guiada</div>', unsafe_allow_html=True)
+        col_e1, col_e2, col_e3 = st.columns(3)
+        with col_e1:
+            if st.button("✂️ Más corto", use_container_width=True, key="ed_corto"):
+                with st.spinner("Condensando..."):
+                    st.session_state.post_generado = editar_post_guiado(
+                        st.session_state.post_generado,
+                        "Reduce el post a máximo 150 palabras. Conserva los mejores insights y la pregunta final. Elimina lo redundante."
+                    )
+                    st.session_state.puntuacion = None
+                    st.rerun()
+        with col_e2:
+            if st.button("🎣 Nuevo gancho", use_container_width=True, key="ed_gancho"):
+                with st.spinner("Reescribiendo gancho..."):
+                    st.session_state.post_generado = editar_post_guiado(
+                        st.session_state.post_generado,
+                        "Reescribe SOLO las primeras 1-2 líneas con un gancho más impactante y diferente. El resto del post queda igual."
+                    )
+                    st.session_state.puntuacion = None
+                    st.rerun()
+        with col_e3:
+            if st.button("📊 Añade dato", use_container_width=True, key="ed_dato"):
+                with st.spinner("Añadiendo dato..."):
+                    st.session_state.post_generado = editar_post_guiado(
+                        st.session_state.post_generado,
+                        "Incorpora un dato, cifra o estadística concreta y relevante en el análisis. Si no hay datos en el post, invéntalo de forma verosímil para el sector."
+                    )
+                    st.session_state.puntuacion = None
+                    st.rerun()
+
     with tab2:
+        st.markdown('<div class="section-label">Versión adaptada al inglés</div>', unsafe_allow_html=True)
+        if not st.session_state.post_en:
+            if st.button("🌍  Generar versión en inglés", use_container_width=True, key="gen_en"):
+                with st.spinner("Adaptando al inglés..."):
+                    st.session_state.post_en = traducir_post_ingles(st.session_state.post_generado)
+                    st.rerun()
+        else:
+            post_en_editado = st.text_area(
+                label="", value=st.session_state.post_en,
+                height=320, label_visibility="collapsed", key="editor_en"
+            )
+            st.session_state.post_en = post_en_editado
+            col_en1, col_en2 = st.columns(2)
+            with col_en1:
+                if st.button("📋  Copiar en inglés", use_container_width=True, key="copy_en"):
+                    st.code(st.session_state.post_en, language=None)
+                    st.success("Copia el texto de arriba ↑")
+            with col_en2:
+                if st.button("📨  Telegram (inglés)", use_container_width=True, key="tg_en"):
+                    with st.spinner("Enviando..."):
+                        ok = enviar_telegram(st.session_state.post_en, n)
+                        if ok:
+                            st.success("✅ Enviado a Telegram.")
+                        else:
+                            st.error("❌ Error al enviar.")
+            if st.button("🔄  Regenerar en inglés", use_container_width=False, key="regen_en"):
+                st.session_state.post_en = ""
+                st.rerun()
+
+    with tab3:
         st.markdown('<div class="section-label">Así se verá en LinkedIn</div>', unsafe_allow_html=True)
         render_linkedin_preview(st.session_state.post_generado)
-    with tab3:
+
+    with tab4:
         if st.session_state.puntuacion is None:
             if st.button("📊  Analizar y puntuar post", use_container_width=True):
                 with st.spinner("Gemini está analizando tu post..."):
@@ -733,10 +849,7 @@ elif st.session_state.fase == "post":
             with st.spinner("Enviando..."):
                 ok = enviar_telegram(st.session_state.post_generado, n)
                 if ok:
-                    guardar_en_historial(
-                        st.session_state.post_generado, n,
-                        sector, st.session_state.tono_elegido
-                    )
+                    guardar_en_historial(st.session_state.post_generado, n, sector, st.session_state.tono_elegido)
                     st.success("✅ Enviado a Telegram y guardado en historial.")
                 else:
                     st.error("❌ Error al enviar.")
@@ -749,6 +862,7 @@ elif st.session_state.fase == "post":
             with st.spinner("Regenerando con Gemini..."):
                 st.session_state.post_generado = generar_post(n, perfil, st.session_state.tono_elegido)
                 st.session_state.puntuacion = None
+                st.session_state.post_en = ""
                 st.rerun()
     with col4:
         if st.button("← Buscar más noticias", use_container_width=True):
@@ -758,4 +872,5 @@ elif st.session_state.fase == "post":
             st.session_state.noticia_elegida = None
             st.session_state.puntuacion = None
             st.session_state.sector_elegido = ""
+            st.session_state.post_en = ""
             st.rerun()
