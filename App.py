@@ -2,9 +2,6 @@ import streamlit as st
 import random
 import json
 import re
-import subprocess
-import tempfile
-import os
 import feedparser
 import requests
 from datetime import datetime, timedelta
@@ -51,7 +48,6 @@ TONOS = {
 }
 
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-SCRIPT_CARRUSEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generar_carrusel.js")
 
 # ── Página ─────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="LinkedIn Agent", page_icon="⚡", layout="centered")
@@ -292,7 +288,6 @@ POST: {post}
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
 def analizar_competencia(sector):
-    """Genera análisis simulado de qué publica la competencia en LinkedIn."""
     client = genai.Client(api_key=GEMINI_API_KEY)
     cfg = SECTORES.get(sector, {})
     perfil = cfg.get("perfil", "consultor junior")
@@ -315,7 +310,6 @@ Devuelve SOLO un JSON válido sin markdown con este formato exacto:
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
 def generar_contenido_carrusel(post, noticia, sector):
-    """Genera el contenido estructurado para el carrusel."""
     client = genai.Client(api_key=GEMINI_API_KEY)
     etiqueta = SECTORES.get(sector, {}).get("etiqueta", sector)
     prompt = f"""Convierte este post de LinkedIn en un carrusel de 5 slides profesional.
@@ -344,24 +338,128 @@ Devuelve SOLO un JSON válido sin markdown:
     raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
-def crear_pptx_carrusel(contenido_carrusel):
-    """Llama al script Node.js para generar el PPTX."""
-    with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as f:
-        output_path = f.name
-    try:
-        result = subprocess.run(
-            ["node", SCRIPT_CARRUSEL, output_path],
-            input=json.dumps(contenido_carrusel),
-            capture_output=True, text=True, timeout=30
-        )
-        if result.returncode == 0 and os.path.exists(output_path):
-            with open(output_path, "rb") as f:
-                return f.read()
-        else:
-            raise Exception(result.stderr or "Error generando PPTX")
-    finally:
-        if os.path.exists(output_path):
-            os.unlink(output_path)
+# ── Generador de carrusel PDF — Python puro, sin Node.js ─────────────────────
+def crear_carrusel_pdf(contenido: dict) -> bytes:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib import colors
+    import io
+
+    W, H = landscape(A4)
+    BG   = colors.HexColor("#0a0a0f")
+    CARD = colors.HexColor("#1c1c2e")
+    PUR  = colors.HexColor("#6c63ff")
+    PURT = colors.HexColor("#a78bfa")
+    TXT  = colors.HexColor("#f0f0f8")
+    MUT  = colors.HexColor("#7070a0")
+    WHT  = colors.HexColor("#ffffff")
+    AMB  = colors.HexColor("#fbbf24")
+
+    def wrap(c, text, font, size, max_w):
+        words = (text or "").split()
+        lines, cur = [], []
+        for w in words:
+            test = " ".join(cur + [w])
+            if c.stringWidth(test, font, size) <= max_w:
+                cur.append(w)
+            else:
+                if cur: lines.append(" ".join(cur))
+                cur = [w]
+        if cur: lines.append(" ".join(cur))
+        return lines
+
+    def base(c, num, total):
+        c.setFillColor(BG)
+        c.rect(0, 0, W, H, fill=1, stroke=0)
+        c.setFillColor(MUT)
+        c.setFont("Helvetica", 9)
+        c.drawRightString(W - 18, 16, f"{num} / {total}")
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=landscape(A4))
+    slides = contenido.get("slides", [])
+    total = len(slides) + 2
+
+    # ── Portada ────────────────────────────────────────────────────────────────
+    base(c, 1, total)
+    c.setFillColor(PUR); c.setFillAlpha(0.14)
+    c.circle(W - 70, H + 10, 210, fill=1, stroke=0)
+    c.setFillAlpha(1.0)
+    sector_txt = contenido.get("sector","").replace("🏦","").replace("♟️","").replace("📊","").strip().upper()
+    bw = max(150, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 32)
+    c.setFillColor(colors.HexColor("#1a1830"))
+    c.roundRect(24, H - 58, bw, 24, 12, fill=1, stroke=0)
+    c.setStrokeColor(PUR); c.setLineWidth(0.8)
+    c.roundRect(24, H - 58, bw, 24, 12, fill=0, stroke=1)
+    c.setFillColor(PURT); c.setFont("Helvetica-Bold", 9)
+    c.drawString(24 + 14, H - 48, sector_txt)
+    titulo_lines = wrap(c, contenido.get("titulo_portada",""), "Helvetica-Bold", 44, W * 0.65)
+    c.setFillColor(TXT); y = H - 130
+    for line in titulo_lines[:3]:
+        c.setFont("Helvetica-Bold", 44); c.drawString(24, y, line); y -= 58
+    c.setFillColor(MUT); c.setFont("Helvetica", 17)
+    c.drawString(24, y - 8, (contenido.get("subtitulo_portada",""))[:72])
+    c.setFillColor(MUT); c.setFont("Helvetica", 11)
+    c.drawString(24, 32, "Julen · Business & Data Analytics · MSc Big Data & IA")
+    c.showPage()
+
+    # ── Slides de contenido ────────────────────────────────────────────────────
+    for idx, s in enumerate(slides):
+        base(c, idx + 2, total)
+        c.setFillColor(PUR); c.rect(0, H - 6, W, 6, fill=1, stroke=0)
+        c.setFillColor(PUR); c.circle(44, H - 52, 24, fill=1, stroke=0)
+        c.setFillColor(WHT); c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(44, H - 59, str(idx + 1))
+        c.setFillColor(TXT); c.setFont("Helvetica-Bold", 26)
+        c.drawString(80, H - 62, (s.get("titulo",""))[:55])
+        c.setStrokeColor(CARD); c.setLineWidth(1.5)
+        c.line(20, H - 84, W - 20, H - 84)
+        dato = s.get("dato_destacado")
+        max_w = W * 0.56 if dato else W - 48
+        cuerpo_lines = wrap(c, s.get("cuerpo",""), "Helvetica", 16, max_w)
+        c.setFillColor(TXT); y = H - 114
+        for line in cuerpo_lines:
+            c.setFont("Helvetica", 16); c.drawString(22, y, line); y -= 26
+        if dato:
+            bx, by, bw2, bh = W * 0.63, H - 262, W * 0.33, 132
+            c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 10, fill=1, stroke=0)
+            c.setStrokeColor(PUR); c.setLineWidth(1)
+            c.roundRect(bx, by, bw2, bh, 10, fill=0, stroke=1)
+            dato_lines = wrap(c, dato, "Helvetica-Bold", 14, bw2 - 24)
+            dy = by + bh - 28; c.setFillColor(AMB)
+            for dl in dato_lines:
+                c.setFont("Helvetica-Bold", 14)
+                dw = c.stringWidth(dl, "Helvetica-Bold", 14)
+                c.drawString(bx + (bw2 - dw) / 2, dy, dl); dy -= 22
+        c.showPage()
+
+    # ── CTA final ──────────────────────────────────────────────────────────────
+    base(c, total, total)
+    c.setFillColor(PUR); c.setFillAlpha(0.10)
+    c.circle(W / 2, H / 2 + 20, 245, fill=1, stroke=0)
+    c.setFillAlpha(1.0)
+    c.setFillColor(PUR); c.rect(0, 0, W, 34, fill=1, stroke=0)
+    c.setFillColor(PURT); c.setFont("Helvetica-Bold", 10)
+    label = "¿QUÉ OPINAS TÚ?"
+    c.drawString((W - c.stringWidth(label,"Helvetica-Bold",10)) / 2, H - 62, label)
+    preg_lines = wrap(c, contenido.get("pregunta_final",""), "Helvetica-Bold", 28, W - 120)
+    c.setFillColor(TXT); y = H - 130
+    for line in preg_lines[:3]:
+        c.setFont("Helvetica-Bold", 28)
+        c.drawString((W - c.stringWidth(line,"Helvetica-Bold",28)) / 2, y, line); y -= 42
+    cta_lines = wrap(c, contenido.get("cta",""), "Helvetica", 14, W - 120)
+    c.setFillColor(MUT); yc = y - 18
+    for cl in cta_lines[:2]:
+        c.setFont("Helvetica", 14)
+        c.drawString((W - c.stringWidth(cl,"Helvetica",14)) / 2, yc, cl); yc -= 22
+    autor = "Julen · Business & Data Analytics · MSc Big Data & IA"
+    c.setFillColor(WHT); c.setFont("Helvetica", 10)
+    c.drawString((W - c.stringWidth(autor,"Helvetica",10)) / 2, 11, autor)
+    c.showPage()
+
+    c.save()
+    buf.seek(0)
+    return buf.read()
 
 def enviar_telegram(texto, noticia):
     separador = "─" * 35
@@ -471,38 +569,29 @@ def render_historial():
         st.markdown(f'<div class="historial-item"><div class="historial-meta"><span class="{pill}">{h["sector"]}</span><span class="source-pill">{h.get("tono","")}</span><span class="historial-fecha">🗓 {h["fecha"]}</span></div><div class="card-title" style="font-size:13px;margin-bottom:4px">{h["titulo"]}</div><div class="historial-preview">{h["preview"]}...</div></div>', unsafe_allow_html=True)
 
 def render_calendario():
-    """Muestra el calendario de la semana con días de publicación configurados."""
-    dias_pub = st.session_state.get("dias_publicacion", [1, 4])  # Lunes y Jueves por defecto
+    dias_pub = st.session_state.get("dias_publicacion", [1, 4])
     historial = st.session_state.get("historial", [])
     ahora = datetime.now()
     inicio_semana = ahora - timedelta(days=ahora.weekday())
-
     st.markdown('<div class="section-label">📅 Esta semana</div>', unsafe_allow_html=True)
-
-    # Días con posts publicados esta semana
     dias_con_post = set()
     for h in historial:
         d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
         if d >= inicio_semana.replace(hour=0,minute=0,second=0):
             dias_con_post.add(d.weekday())
-
     html_dias = '<div class="cal-row">'
     for i, dia in enumerate(DIAS_SEMANA):
         es_hoy = (i == ahora.weekday())
-        es_pub = (i in dias_pub)
-        tiene_post = (i in dias_con_post)
         clase = "cal-day cal-day-hoy" if es_hoy else "cal-day"
-        if tiene_post:
-            contenido = f'<div class="cal-day-pub">✓ Publicado</div>'
-        elif es_pub:
-            contenido = f'<div class="cal-day-pub">📝 Toca</div>'
+        if i in dias_con_post:
+            contenido_dia = '<div class="cal-day-pub">✓ Publicado</div>'
+        elif i in dias_pub:
+            contenido_dia = '<div class="cal-day-pub">📝 Toca</div>'
         else:
-            contenido = f'<div class="cal-day-empty">—</div>'
-        html_dias += f'<div class="{clase}"><div class="cal-day-name">{dia[:3].upper()}</div>{contenido}</div>'
+            contenido_dia = '<div class="cal-day-empty">—</div>'
+        html_dias += f'<div class="{clase}"><div class="cal-day-name">{dia[:3].upper()}</div>{contenido_dia}</div>'
     html_dias += '</div>'
     st.markdown(html_dias, unsafe_allow_html=True)
-
-    # Selector de días
     st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px;margin-bottom:6px">Configura tus días de publicación:</div>', unsafe_allow_html=True)
     opciones = st.multiselect(
         label="",
@@ -515,13 +604,8 @@ def render_calendario():
     if opciones != dias_pub:
         st.session_state.dias_publicacion = opciones
         st.rerun()
-
-    # Recordatorio
-    hoy_es_dia_pub = ahora.weekday() in dias_pub
-    posts_semana = len(dias_con_post)
     pendientes = len([d for d in dias_pub if d >= ahora.weekday() and d not in dias_con_post])
-
-    if hoy_es_dia_pub and ahora.weekday() not in dias_con_post:
+    if ahora.weekday() in dias_pub and ahora.weekday() not in dias_con_post:
         st.markdown('<div style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.3);border-radius:12px;padding:10px 14px;font-size:13px;color:#a78bfa;margin-top:10px">⚡ Hoy toca publicar — ¡busca una noticia!</div>', unsafe_allow_html=True)
     elif pendientes > 0:
         st.markdown(f'<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:12px;padding:10px 14px;font-size:13px;color:#fbbf24;margin-top:10px">📅 Te quedan {pendientes} publicación{"es" if pendientes>1 else ""} esta semana</div>', unsafe_allow_html=True)
@@ -529,12 +613,8 @@ def render_calendario():
         st.markdown('<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:12px;padding:10px 14px;font-size:13px;color:#4ade80;margin-top:10px">✅ ¡Has cumplido tu plan de publicación esta semana!</div>', unsafe_allow_html=True)
 
 def render_analisis_competencia(data):
-    """Renderiza el análisis de competencia."""
-    pill_map = {"🏦 Banca":"sector-pill-banca","♟️ Estrategia & IA":"sector-pill-estrategia","📊 Analista de Datos":"sector-pill-datos"}
-
     def lista_items(items):
         return "".join([f'<div class="comp-item">{item}</div>' for item in items])
-
     st.markdown(f"""
     <div class="comp-card">
         <div class="comp-section">📋 Formatos más populares</div>
@@ -571,7 +651,7 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("post_en",""),("edicion_key",0),
                   ("dias_publicacion",[0,3]),
                   ("competencia_data",None),("competencia_sector",""),
-                  ("carrusel_pptx",None)]:
+                  ("carrusel_pdf",None)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -610,17 +690,14 @@ if st.session_state.fase == "inicio":
     if st.session_state.usadas:
         st.markdown(f"<div style='text-align:center;color:#7070a0;font-size:12px;margin-top:8px'>{len(st.session_state.usadas)} noticia{'s' if len(st.session_state.usadas)>1 else ''} ya usada{'s' if len(st.session_state.usadas)>1 else ''} — no se repetirán</div>", unsafe_allow_html=True)
 
-    # ── Botón competencia ──────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
     if st.button("🔍  Ver qué publica la competencia", use_container_width=True):
         st.session_state.fase = "competencia"
         st.rerun()
 
-    # ── Calendario ────────────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
     render_calendario()
 
-    # ── Historial ─────────────────────────────────────────────────────────────
     if st.session_state.historial:
         st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
         if st.button("📚  Ver historial de posts", use_container_width=True):
@@ -638,7 +715,6 @@ elif st.session_state.fase == "competencia":
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos"}
     for sector_key, cfg in SECTORES.items():
         if st.button(cfg["etiqueta"], key=f"comp_{sector_key}", use_container_width=True):
@@ -650,14 +726,12 @@ elif st.session_state.fase == "competencia":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
-
     if st.session_state.competencia_data:
         sector_key = st.session_state.competencia_sector
         cfg = SECTORES.get(sector_key, {})
         pill = pill_class.get(sector_key, "source-pill")
         st.markdown(f'<div style="margin:1rem 0 0.5rem"><span class="{pill}">{cfg.get("etiqueta","")}</span></div>', unsafe_allow_html=True)
         render_analisis_competencia(st.session_state.competencia_data)
-
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
         st.session_state.fase = "inicio"
@@ -746,7 +820,7 @@ elif st.session_state.fase == "elegir_tono":
                 st.session_state.razon = razon
                 st.session_state.puntuacion = None
                 st.session_state.post_en = ""
-                st.session_state.carrusel_pptx = None
+                st.session_state.carrusel_pdf = None
                 st.session_state.usadas.append(n["url"])
                 st.session_state.fase = "elegir_post"
                 st.rerun()
@@ -806,14 +880,13 @@ elif st.session_state.fase == "post":
 
     render_imagen_noticia(n)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["✏️ Editar", "🎨 Carrusel", "🌍 Inglés", "👁️ Vista previa", "📊 Puntuación"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["✏️ Editar", "🎨 Carrusel PDF", "🌍 Inglés", "👁️ Vista previa", "📊 Puntuación"])
 
     with tab1:
         post_editado = st.text_area(label="", value=st.session_state.post_generado,
             height=320, label_visibility="collapsed", key=f"editor_{st.session_state.edicion_key}")
         if post_editado != st.session_state.post_generado:
             st.session_state.post_generado = post_editado
-
         st.markdown('<div class="edicion-guiada-label">✨ Edición guiada</div>', unsafe_allow_html=True)
         col_e1, col_e2, col_e3 = st.columns(3)
         with col_e1:
@@ -839,32 +912,32 @@ elif st.session_state.fase == "post":
                     st.rerun()
 
     with tab2:
-        st.markdown('<div class="section-label">🎨 Carrusel para LinkedIn</div>', unsafe_allow_html=True)
-        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:1rem">Genera un .pptx con 7 slides listo para subir a LinkedIn como carrusel PDF</div>', unsafe_allow_html=True)
-        if not st.session_state.carrusel_pptx:
-            if st.button("🎨  Generar carrusel (.pptx)", use_container_width=True, key="gen_carrusel"):
+        st.markdown('<div class="section-label">🎨 Carrusel PDF para LinkedIn</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:1rem">Genera un PDF con 7 slides listo para subir directamente a LinkedIn como carrusel</div>', unsafe_allow_html=True)
+        if not st.session_state.carrusel_pdf:
+            if st.button("🎨  Generar carrusel PDF", use_container_width=True, key="gen_carrusel"):
                 with st.spinner("Gemini estructurando el carrusel..."):
                     try:
                         contenido = generar_contenido_carrusel(st.session_state.post_generado, n, sector)
-                        with st.spinner("Generando el archivo PowerPoint..."):
-                            pptx_bytes = crear_pptx_carrusel(contenido)
-                            st.session_state.carrusel_pptx = pptx_bytes
+                        with st.spinner("Generando el PDF..."):
+                            pdf_bytes = crear_carrusel_pdf(contenido)
+                            st.session_state.carrusel_pdf = pdf_bytes
                             st.rerun()
                     except Exception as e:
                         st.error(f"Error generando carrusel: {e}")
         else:
-            st.success("✅ Carrusel generado correctamente")
+            st.success("✅ Carrusel PDF generado correctamente")
             titulo_archivo = re.sub(r'[^a-z0-9]+', '_', n.get("titulo","carrusel").lower())[:30]
             st.download_button(
-                label="⬇️  Descargar carrusel.pptx",
-                data=st.session_state.carrusel_pptx,
-                file_name=f"carrusel_{titulo_archivo}.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                label="⬇️  Descargar carrusel.pdf",
+                data=st.session_state.carrusel_pdf,
+                file_name=f"carrusel_{titulo_archivo}.pdf",
+                mime="application/pdf",
                 use_container_width=True
             )
-            st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px">💡 Abre en PowerPoint → Exportar como PDF → Sube el PDF a LinkedIn como documento</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px">💡 Descarga el PDF y súbelo directamente a LinkedIn como documento — aparecerá como carrusel</div>', unsafe_allow_html=True)
             if st.button("🔄  Regenerar carrusel", use_container_width=False, key="regen_carrusel"):
-                st.session_state.carrusel_pptx = None
+                st.session_state.carrusel_pdf = None
                 st.rerun()
 
     with tab3:
@@ -936,7 +1009,7 @@ elif st.session_state.fase == "post":
                 st.session_state.post_generado = generar_post(n, perfil, st.session_state.tono_elegido)
                 st.session_state.puntuacion = None
                 st.session_state.post_en = ""
-                st.session_state.carrusel_pptx = None
+                st.session_state.carrusel_pdf = None
                 st.session_state.edicion_key += 1
                 st.rerun()
     with col4:
@@ -948,5 +1021,5 @@ elif st.session_state.fase == "post":
             st.session_state.puntuacion = None
             st.session_state.sector_elegido = ""
             st.session_state.post_en = ""
-            st.session_state.carrusel_pptx = None
+            st.session_state.carrusel_pdf = None
             st.rerun()
