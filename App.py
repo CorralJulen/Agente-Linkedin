@@ -369,94 +369,118 @@ def crear_carrusel_pdf(contenido: dict) -> bytes:
         return lines
 
     def base(c, num, total):
-        c.setFillColor(BG)
-        c.rect(0, 0, W, H, fill=1, stroke=0)
-        c.setFillColor(MUT)
-        c.setFont("Helvetica", 9)
+        c.setFillColor(BG); c.rect(0, 0, W, H, fill=1, stroke=0)
+        c.setFillColor(MUT); c.setFont("Helvetica", 9)
         c.drawRightString(W - 18, 16, f"{num} / {total}")
+
+    def draw_portada(c, data, total):
+        base(c, 1, total)
+        c.setFillColor(PUR); c.setFillAlpha(0.13)
+        c.circle(W - 60, H + 10, 220, fill=1, stroke=0)
+        c.setFillAlpha(1.0)
+        c.setFillColor(PUR); c.rect(0, 0, 7, H, fill=1, stroke=0)
+        sector_txt = data.get("sector","").replace("🏦","").replace("♟️","").replace("📊","").strip().upper()
+        bw = max(150, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 32)
+        c.setFillColor(colors.HexColor("#1a1830"))
+        c.roundRect(28, H - 60, bw, 26, 13, fill=1, stroke=0)
+        c.setStrokeColor(PUR); c.setLineWidth(0.8)
+        c.roundRect(28, H - 60, bw, 26, 13, fill=0, stroke=1)
+        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 9)
+        c.drawString(28 + 14, H - 47, sector_txt)
+        titulo_lines = wrap(c, data.get("titulo_portada",""), "Helvetica-Bold", 46, W * 0.62)
+        c.setFillColor(TXT); y = H - 135
+        for line in titulo_lines[:3]:
+            c.setFont("Helvetica-Bold", 46); c.drawString(28, y, line); y -= 62
+        c.setFillColor(MUT); c.setFont("Helvetica", 18)
+        c.drawString(28, y - 10, data.get("subtitulo_portada","")[:70])
+        c.setFillColor(MUT); c.setFont("Helvetica", 11)
+        c.drawString(28, 32, "Julen · Business & Data Analytics · MSc Big Data & IA")
+        c.showPage()
+
+    def draw_contenido(c, slide, idx, total):
+        base(c, idx + 2, total)
+        c.setFillColor(PUR); c.rect(0, H - 6, W, 6, fill=1, stroke=0)
+        c.setFillColor(PUR); c.circle(46, H - 52, 26, fill=1, stroke=0)
+        c.setFillColor(WHT); c.setFont("Helvetica-Bold", 22)
+        c.drawCentredString(46, H - 60, str(idx + 1))
+        c.setFillColor(TXT); c.setFont("Helvetica-Bold", 28)
+        c.drawString(86, H - 64, slide.get("titulo","")[:52])
+        c.setStrokeColor(colors.HexColor("#2a2a3e")); c.setLineWidth(1.5)
+        c.line(20, H - 88, W - 20, H - 88)
+        cuerpo = slide.get("cuerpo","")
+        dato = slide.get("dato_destacado")
+        MARGIN_BOTTOM = 36
+        if dato:
+            cuerpo_lines = wrap(c, cuerpo, "Helvetica", 19, W * 0.52)
+            c.setFillColor(TXT); y = H - 122
+            for line in cuerpo_lines:
+                c.setFont("Helvetica", 19); c.drawString(22, y, line); y -= 30
+            bx = W * 0.60; by = MARGIN_BOTTOM; bw2 = W * 0.36; bh = H - 100 - MARGIN_BOTTOM
+            c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 12, fill=1, stroke=0)
+            c.setStrokeColor(PUR); c.setLineWidth(1.5)
+            c.roundRect(bx, by, bw2, bh, 12, fill=0, stroke=1)
+            c.setFillColor(PUR); c.rect(bx + 16, by + bh - 5, bw2 - 32, 5, fill=1, stroke=0)
+            dato_lines = wrap(c, dato, "Helvetica-Bold", 22, bw2 - 40)
+            total_h_dato = len(dato_lines) * 32
+            dy = by + bh / 2 + total_h_dato / 2 - 4
+            c.setFillColor(AMB)
+            for dl in dato_lines:
+                c.setFont("Helvetica-Bold", 22)
+                dw = c.stringWidth(dl, "Helvetica-Bold", 22)
+                c.drawString(bx + (bw2 - dw) / 2, dy, dl); dy -= 32
+        else:
+            box_top = H - 96; box_bot = MARGIN_BOTTOM
+            box_h = box_top - box_bot; box_x = 20; box_w = W - 40
+            c.setFillColor(colors.HexColor("#0e0e22"))
+            c.roundRect(box_x, box_bot, box_w, box_h, 12, fill=1, stroke=0)
+            c.setFillColor(PUR)
+            c.roundRect(box_x, box_bot, 6, box_h, 3, fill=1, stroke=0)
+            test_lines_28 = wrap(c, cuerpo, "Helvetica-Bold", 28, box_w - 60)
+            test_lines_22 = wrap(c, cuerpo, "Helvetica-Bold", 22, box_w - 60)
+            if len(test_lines_28) <= 4:
+                font_size, line_h, lines = 28, 44, test_lines_28
+            else:
+                font_size, line_h, lines = 22, 34, test_lines_22
+            text_total_h = len(lines) * line_h
+            text_start_y = box_bot + box_h / 2 + text_total_h / 2 - line_h * 0.3
+            c.setFillColor(TXT); y_txt = text_start_y
+            for line in lines:
+                c.setFont("Helvetica-Bold", font_size)
+                c.drawString(box_x + 26, y_txt, line); y_txt -= line_h
+        c.showPage()
+
+    def draw_cta(c, data, total):
+        base(c, total, total)
+        c.setFillColor(PUR); c.setFillAlpha(0.10)
+        c.circle(W / 2, H / 2 + 20, 260, fill=1, stroke=0)
+        c.setFillAlpha(1.0)
+        c.setFillColor(PUR); c.rect(0, 0, W, 36, fill=1, stroke=0)
+        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 10)
+        label = "¿QUÉ OPINAS TÚ?"
+        c.drawString((W - c.stringWidth(label,"Helvetica-Bold",10)) / 2, H - 65, label)
+        preg_lines = wrap(c, data.get("pregunta_final",""), "Helvetica-Bold", 30, W - 100)
+        c.setFillColor(TXT); y = H - 130
+        for line in preg_lines[:3]:
+            c.setFont("Helvetica-Bold", 30)
+            c.drawString((W - c.stringWidth(line,"Helvetica-Bold",30)) / 2, y, line); y -= 46
+        cta_lines = wrap(c, data.get("cta",""), "Helvetica", 15, W - 100)
+        c.setFillColor(MUT); yc = y - 20
+        for cl in cta_lines[:2]:
+            c.setFont("Helvetica", 15)
+            c.drawString((W - c.stringWidth(cl,"Helvetica",15)) / 2, yc, cl); yc -= 24
+        autor = "Julen · Business & Data Analytics · MSc Big Data & IA"
+        c.setFillColor(WHT); c.setFont("Helvetica", 10)
+        c.drawString((W - c.stringWidth(autor,"Helvetica",10)) / 2, 12, autor)
+        c.showPage()
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=landscape(A4))
     slides = contenido.get("slides", [])
     total = len(slides) + 2
-
-    # ── Portada ────────────────────────────────────────────────────────────────
-    base(c, 1, total)
-    c.setFillColor(PUR); c.setFillAlpha(0.14)
-    c.circle(W - 70, H + 10, 210, fill=1, stroke=0)
-    c.setFillAlpha(1.0)
-    sector_txt = contenido.get("sector","").replace("🏦","").replace("♟️","").replace("📊","").strip().upper()
-    bw = max(150, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 32)
-    c.setFillColor(colors.HexColor("#1a1830"))
-    c.roundRect(24, H - 58, bw, 24, 12, fill=1, stroke=0)
-    c.setStrokeColor(PUR); c.setLineWidth(0.8)
-    c.roundRect(24, H - 58, bw, 24, 12, fill=0, stroke=1)
-    c.setFillColor(PURT); c.setFont("Helvetica-Bold", 9)
-    c.drawString(24 + 14, H - 48, sector_txt)
-    titulo_lines = wrap(c, contenido.get("titulo_portada",""), "Helvetica-Bold", 44, W * 0.65)
-    c.setFillColor(TXT); y = H - 130
-    for line in titulo_lines[:3]:
-        c.setFont("Helvetica-Bold", 44); c.drawString(24, y, line); y -= 58
-    c.setFillColor(MUT); c.setFont("Helvetica", 17)
-    c.drawString(24, y - 8, (contenido.get("subtitulo_portada",""))[:72])
-    c.setFillColor(MUT); c.setFont("Helvetica", 11)
-    c.drawString(24, 32, "Julen · Business & Data Analytics · MSc Big Data & IA")
-    c.showPage()
-
-    # ── Slides de contenido ────────────────────────────────────────────────────
+    draw_portada(c, contenido, total)
     for idx, s in enumerate(slides):
-        base(c, idx + 2, total)
-        c.setFillColor(PUR); c.rect(0, H - 6, W, 6, fill=1, stroke=0)
-        c.setFillColor(PUR); c.circle(44, H - 52, 24, fill=1, stroke=0)
-        c.setFillColor(WHT); c.setFont("Helvetica-Bold", 20)
-        c.drawCentredString(44, H - 59, str(idx + 1))
-        c.setFillColor(TXT); c.setFont("Helvetica-Bold", 26)
-        c.drawString(80, H - 62, (s.get("titulo",""))[:55])
-        c.setStrokeColor(CARD); c.setLineWidth(1.5)
-        c.line(20, H - 84, W - 20, H - 84)
-        dato = s.get("dato_destacado")
-        max_w = W * 0.56 if dato else W - 48
-        cuerpo_lines = wrap(c, s.get("cuerpo",""), "Helvetica", 16, max_w)
-        c.setFillColor(TXT); y = H - 114
-        for line in cuerpo_lines:
-            c.setFont("Helvetica", 16); c.drawString(22, y, line); y -= 26
-        if dato:
-            bx, by, bw2, bh = W * 0.63, H - 262, W * 0.33, 132
-            c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 10, fill=1, stroke=0)
-            c.setStrokeColor(PUR); c.setLineWidth(1)
-            c.roundRect(bx, by, bw2, bh, 10, fill=0, stroke=1)
-            dato_lines = wrap(c, dato, "Helvetica-Bold", 14, bw2 - 24)
-            dy = by + bh - 28; c.setFillColor(AMB)
-            for dl in dato_lines:
-                c.setFont("Helvetica-Bold", 14)
-                dw = c.stringWidth(dl, "Helvetica-Bold", 14)
-                c.drawString(bx + (bw2 - dw) / 2, dy, dl); dy -= 22
-        c.showPage()
-
-    # ── CTA final ──────────────────────────────────────────────────────────────
-    base(c, total, total)
-    c.setFillColor(PUR); c.setFillAlpha(0.10)
-    c.circle(W / 2, H / 2 + 20, 245, fill=1, stroke=0)
-    c.setFillAlpha(1.0)
-    c.setFillColor(PUR); c.rect(0, 0, W, 34, fill=1, stroke=0)
-    c.setFillColor(PURT); c.setFont("Helvetica-Bold", 10)
-    label = "¿QUÉ OPINAS TÚ?"
-    c.drawString((W - c.stringWidth(label,"Helvetica-Bold",10)) / 2, H - 62, label)
-    preg_lines = wrap(c, contenido.get("pregunta_final",""), "Helvetica-Bold", 28, W - 120)
-    c.setFillColor(TXT); y = H - 130
-    for line in preg_lines[:3]:
-        c.setFont("Helvetica-Bold", 28)
-        c.drawString((W - c.stringWidth(line,"Helvetica-Bold",28)) / 2, y, line); y -= 42
-    cta_lines = wrap(c, contenido.get("cta",""), "Helvetica", 14, W - 120)
-    c.setFillColor(MUT); yc = y - 18
-    for cl in cta_lines[:2]:
-        c.setFont("Helvetica", 14)
-        c.drawString((W - c.stringWidth(cl,"Helvetica",14)) / 2, yc, cl); yc -= 22
-    autor = "Julen · Business & Data Analytics · MSc Big Data & IA"
-    c.setFillColor(WHT); c.setFont("Helvetica", 10)
-    c.drawString((W - c.stringWidth(autor,"Helvetica",10)) / 2, 11, autor)
-    c.showPage()
-
+        draw_contenido(c, s, idx, total)
+    draw_cta(c, contenido, total)
     c.save()
     buf.seek(0)
     return buf.read()
