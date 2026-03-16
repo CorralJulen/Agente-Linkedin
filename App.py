@@ -12,32 +12,50 @@ GEMINI_API_KEY   = st.secrets.get("GEMINI_API_KEY")
 TELEGRAM_TOKEN   = st.secrets.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
 
-# ── Fuentes RSS por sector (solo España) ───────────────────────────────────────
+# ── Fuentes RSS por sector — solo fuentes especializadas ───────────────────────
 RSS_BANCA = [
-    ("El Economista - Banca",      "https://www.eleconomista.es/rss/rss-banca.php"),
-    ("Expansión - Finanzas",       "https://e00-expansion.uecdn.es/rss/mercados.xml"),
-    ("Cinco Días",                 "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
-    ("El Confidencial - Economía", "https://www.elconfidencial.com/rss/economia/"),
-    ("El País - Economía",         "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada"),
+    ("El Economista - Banca",   "https://www.eleconomista.es/rss/rss-banca.php"),
+    ("Expansión - Finanzas",    "https://e00-expansion.uecdn.es/rss/mercados.xml"),
+    ("El Confidencial - Banca", "https://www.elconfidencial.com/rss/economia/finanzas-personales/"),
+    ("Expansión - Banca",       "https://e00-expansion.uecdn.es/rss/empresas/banca.xml"),
 ]
+
 RSS_ESTRATEGIA = [
-    ("Expansión - Empresas",        "https://e00-expansion.uecdn.es/rss/empresas.xml"),
-    ("El Economista - Empresas",    "https://www.eleconomista.es/rss/rss-empresas.php"),
-    ("El Confidencial - Empresas",  "https://www.elconfidencial.com/rss/empresas/"),
-    ("El País - Economía",          "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada"),
-    ("Cinco Días",                  "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
+    ("Expansión - Empresas",       "https://e00-expansion.uecdn.es/rss/empresas.xml"),
+    ("El Economista - Empresas",   "https://www.eleconomista.es/rss/rss-empresas.php"),
+    ("El Confidencial - Empresas", "https://www.elconfidencial.com/rss/empresas/"),
+    ("Harvard Business Review ES", "https://hbr.org/subscriber-content/feed"),
+    ("MIT Sloan",                  "https://sloanreview.mit.edu/feed/"),
 ]
+
 RSS_DATOS = [
-    ("El Confidencial - Tech",  "https://www.elconfidencial.com/rss/tecnologia/"),
-    ("El País - Tecnología",    "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada"),
-    ("Xataka",                  "https://feeds.weblogssl.com/xataka"),
-    ("El Español - Tech",       "https://www.elespanol.com/rss/economia/"),
-    ("ABC - Tecnología",        "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
+    ("El Confidencial - Tech", "https://www.elconfidencial.com/rss/tecnologia/"),
+    ("Xataka",                 "https://feeds.weblogssl.com/xataka"),
+    ("MIT Technology Review",  "https://www.technologyreview.com/feed/"),
+    ("VentureBeat AI",         "https://venturebeat.com/ai/feed/"),
+    ("The Batch",              "https://www.deeplearning.ai/the-batch/feed/"),
 ]
+
+# Palabras clave por sector para filtro rápido (sin llamar a Gemini)
+KEYWORDS_BANCA = ["banco", "banca", "financiero", "finanzas", "crédito", "hipoteca",
+                  "tipos de interés", "BCE", "banco central", "entidad financiera",
+                  "inversión", "bolsa", "mercado", "deuda", "capital", "fondo",
+                  "dividendo", "acción", "cotización", "préstamo", "morosidad", "regulación bancaria"]
+
+KEYWORDS_ESTRATEGIA = ["estrategia", "empresa", "CEO", "directivo", "fusión", "adquisición",
+                        "resultado", "beneficio", "facturación", "negocio", "mercado", "competencia",
+                        "innovación", "transformación", "consultor", "management", "liderazgo",
+                        "startup", "venture", "inteligencia artificial", "IA", "digital"]
+
+KEYWORDS_DATOS = ["inteligencia artificial", "IA", "machine learning", "big data", "datos",
+                  "algoritmo", "modelo", "ChatGPT", "LLM", "automatización", "analytics",
+                  "tecnología", "digital", "software", "plataforma", "cloud", "ciberseguridad",
+                  "robot", "deep learning", "neural", "OpenAI", "Google", "Microsoft", "Meta"]
+
 SECTORES = {
-    "banca":      {"feeds": RSS_BANCA,      "etiqueta": "🏦 Banca",            "perfil": "consultor de banca y finanzas"},
-    "estrategia": {"feeds": RSS_ESTRATEGIA, "etiqueta": "♟️ Estrategia & IA",  "perfil": "consultor de estrategia e IA"},
-    "datos":      {"feeds": RSS_DATOS,      "etiqueta": "📊 Analista de Datos", "perfil": "analista de datos"},
+    "banca":      {"feeds": RSS_BANCA,      "etiqueta": "🏦 Banca",            "perfil": "consultor de banca y finanzas",  "keywords": KEYWORDS_BANCA},
+    "estrategia": {"feeds": RSS_ESTRATEGIA, "etiqueta": "♟️ Estrategia & IA",  "perfil": "consultor de estrategia e IA",   "keywords": KEYWORDS_ESTRATEGIA},
+    "datos":      {"feeds": RSS_DATOS,      "etiqueta": "📊 Analista de Datos", "perfil": "analista de datos",              "keywords": KEYWORDS_DATOS},
 }
 
 TONOS = {
@@ -84,7 +102,6 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .historial-fecha { font-size: 11px; color: #7070a0; }
 .historial-preview { font-size: 12px; color: rgba(240,240,248,0.7); line-height: 1.6; }
 .edicion-guiada-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #7070a0; margin-bottom: 8px; margin-top: 12px; }
-.en-box { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.2rem 1.4rem; font-size: 13px; line-height: 1.75; color: #d0d0e0; white-space: pre-wrap; word-break: break-word; margin-bottom: 1rem; }
 .li-card { background: #1b1f23; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem; }
 .li-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
 .li-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6c63ff, #9333ea); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: white; flex-shrink: 0; }
@@ -114,6 +131,11 @@ hr { border-color: rgba(255,255,255,0.07) !important; margin: 1.5rem 0 !importan
 """, unsafe_allow_html=True)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def es_relevante(titulo: str, resumen: str, keywords: list) -> bool:
+    """Comprueba si la noticia contiene al menos una palabra clave del sector."""
+    texto = (titulo + " " + resumen).lower()
+    return any(kw.lower() in texto for kw in keywords)
 
 def extraer_imagen(entry) -> str:
     if hasattr(entry, "media_content"):
@@ -163,8 +185,7 @@ def calcular_racha():
     semanas = set()
     for h in st.session_state.historial:
         d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
-        semana_num = d.isocalendar()[1]
-        semanas.add((d.year, semana_num))
+        semanas.add((d.year, d.isocalendar()[1]))
     semanas_consecutivas = 0
     semana_actual = ahora.isocalendar()[1]
     anio_actual = ahora.year
@@ -181,17 +202,17 @@ def calcular_racha():
     return posts_semana, semanas_consecutivas
 
 def parsear_un_feed(sector: str, excluir_urls: list) -> dict:
-    """Obtiene una noticia nueva de un sector, excluyendo URLs ya mostradas."""
     hace_5_dias = datetime.now() - timedelta(days=5)
     cfg = SECTORES[sector]
-    feeds = cfg["feeds"]
+    keywords = cfg.get("keywords", [])
+    feeds = list(cfg["feeds"])
     random.shuffle(feeds)
     for fuente, url in feeds:
         try:
             feed = feedparser.parse(url)
             entradas = [e for e in feed.entries if e.get("link", "") not in excluir_urls]
             random.shuffle(entradas)
-            for entry in entradas[:8]:
+            for entry in entradas[:10]:
                 published = None
                 if hasattr(entry, "published_parsed") and entry.published_parsed:
                     published = datetime(*entry.published_parsed[:6])
@@ -201,14 +222,13 @@ def parsear_un_feed(sector: str, excluir_urls: list) -> dict:
                 titulo = entry.get("title", "")
                 if not titulo or len(resumen) < 80:
                     continue
+                if keywords and not es_relevante(titulo, resumen, keywords):
+                    continue
                 return {
-                    "fuente": fuente,
-                    "titulo": titulo,
-                    "resumen": resumen,
+                    "fuente": fuente, "titulo": titulo, "resumen": resumen,
                     "url": entry.get("link", ""),
                     "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
-                    "imagen": extraer_imagen(entry),
-                    "_sector": sector,
+                    "imagen": extraer_imagen(entry), "_sector": sector,
                 }
         except Exception:
             pass
@@ -219,21 +239,25 @@ def parsear_un_feed(sector: str, excluir_urls: list) -> dict:
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_noticias_por_sector() -> dict:
     hace_5_dias = datetime.now() - timedelta(days=5)
-    def parsear_feeds(feeds):
+    def parsear_feeds(feeds, keywords):
         noticias = []
         for fuente, url in feeds:
             try:
                 feed = feedparser.parse(url)
-                for entry in feed.entries[:4]:
+                for entry in feed.entries[:6]:
                     published = None
                     if hasattr(entry, "published_parsed") and entry.published_parsed:
                         published = datetime(*entry.published_parsed[:6])
                     if published and published < hace_5_dias:
                         continue
+                    titulo = entry.get("title", "")
+                    resumen = entry.get("summary", entry.get("description", ""))[:400]
+                    if not titulo or len(resumen) < 80:
+                        continue
+                    if keywords and not es_relevante(titulo, resumen, keywords):
+                        continue
                     noticias.append({
-                        "fuente": fuente,
-                        "titulo": entry.get("title", ""),
-                        "resumen": entry.get("summary", entry.get("description", ""))[:400],
+                        "fuente": fuente, "titulo": titulo, "resumen": resumen,
                         "url": entry.get("link", ""),
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
                         "imagen": extraer_imagen(entry),
@@ -243,10 +267,8 @@ def fetch_noticias_por_sector() -> dict:
         return noticias
     resultado = {}
     for sector, cfg in SECTORES.items():
-        pool = parsear_feeds(cfg["feeds"])
-        validas = [n for n in pool if n["titulo"] and len(n.get("resumen", "")) > 80]
-        elegidas = validas if validas else pool
-        resultado[sector] = random.choice(elegidas) if elegidas else None
+        pool = parsear_feeds(cfg["feeds"], cfg.get("keywords", []))
+        resultado[sector] = random.choice(pool) if pool else None
     return resultado
 
 def generar_dos_posts(noticia: dict, perfil: str, tono: str) -> tuple:
@@ -277,15 +299,12 @@ INSTRUCCIONES COMUNES:
     resp_b = client.models.generate_content(model="gemini-flash-latest", contents=prompt_b)
     post_a = resp_a.text.strip()
     post_b = resp_b.text.strip()
-    prompt_rec = f"""Eres un experto en contenido LinkedIn para profesionales de consultoría y finanzas.
-Dada esta noticia:
-Título: {noticia['titulo']}
-Sector: {perfil}
-Resumen: {noticia['resumen']}
+    prompt_rec = f"""Eres un experto en contenido LinkedIn.
+Dada esta noticia: Título: {noticia['titulo']} | Sector: {perfil}
 - Versión A: analítica y técnica
 - Versión B: cercana y reflexiva
 ¿Cuál encaja mejor? Responde SOLO con este JSON sin texto adicional ni markdown:
-{{"recomendada": "A" o "B", "razon": "Una frase corta explicando por qué (máximo 15 palabras)"}}"""
+{{"recomendada": "A" o "B", "razon": "Una frase corta (máximo 15 palabras)"}}"""
     try:
         resp_rec = client.models.generate_content(model="gemini-flash-latest", contents=prompt_rec)
         raw = resp_rec.text.strip().replace("```json", "").replace("```", "").strip()
@@ -303,23 +322,14 @@ def generar_post(noticia: dict, perfil: str, tono: str = "aprendiendo") -> str:
     prompt = f"""
 Eres un {perfil} junior.
 Tienes formación en Business Management y estás cursando un Máster en Big Data, IA y Business Analytics.
-NOTICIA:
-Título: {noticia['titulo']}
-Fuente: {noticia['fuente']} ({noticia['fecha']})
-Resumen: {noticia['resumen']}
+NOTICIA: Título: {noticia['titulo']} | Fuente: {noticia['fuente']} ({noticia['fecha']}) | Resumen: {noticia['resumen']}
 TONO: {instruccion_tono}
-INSTRUCCIONES:
-1. Post en ESPAÑOL de 150-250 palabras.
-2. Gancho potente → análisis → pregunta abierta.
-3. 3-5 insights concretos.
-4. 5-8 hashtags al final.
-5. NO uses lenguaje corporativo vacío ni menciones que eres IA.
+INSTRUCCIONES: Post en ESPAÑOL 150-250 palabras. Gancho → análisis → pregunta abierta. 3-5 insights. 5-8 hashtags. NO menciones IA.
 Devuelve SOLO el texto del post.
 """
     response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
     return response.text.strip()
 
-# ── NUEVO: edición guiada ──────────────────────────────────────────────────────
 def editar_post_guiado(post: str, instruccion: str) -> str:
     client = genai.Client(api_key=GEMINI_API_KEY)
     prompt = f"""Eres un editor experto de contenido LinkedIn.
@@ -335,38 +345,23 @@ Devuelve SOLO el texto del post modificado, sin explicaciones.
     response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
     return response.text.strip()
 
-# ── NUEVO: versión en inglés ───────────────────────────────────────────────────
 def traducir_post_ingles(post: str) -> str:
     client = genai.Client(api_key=GEMINI_API_KEY)
-    prompt = f"""Eres un experto en contenido LinkedIn para profesionales de consultoría y finanzas en mercados internacionales.
-
-Traduce y adapta este post de LinkedIn al inglés. No es una traducción literal — adapta el tono, las expresiones y los hashtags para que suene natural y profesional en inglés para una audiencia de Big 4, strategy consulting y banking.
-
-POST ORIGINAL:
-{post}
-
-Devuelve SOLO el texto del post en inglés, sin explicaciones.
+    prompt = f"""Eres un experto en contenido LinkedIn para mercados internacionales.
+Traduce y adapta este post al inglés para una audiencia de Big 4, strategy consulting y banking. No traducción literal — adapta tono, expresiones y hashtags.
+POST: {post}
+Devuelve SOLO el texto en inglés.
 """
     response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
     return response.text.strip()
 
 def puntuar_post(post: str) -> dict:
     client = genai.Client(api_key=GEMINI_API_KEY)
-    prompt = f"""Eres un experto en marketing de contenidos B2B en LinkedIn.
+    prompt = f"""Eres un experto en marketing B2B en LinkedIn.
 Analiza este post y devuelve SOLO un JSON válido sin texto adicional ni markdown:
-POST:
-{post}
+POST: {post}
 Formato exacto:
-{{
-  "gancho": <1-10>,
-  "claridad": <1-10>,
-  "valor": <1-10>,
-  "engagement": <1-10>,
-  "hashtags": <1-10>,
-  "total": <1-100>,
-  "nivel": "<Excelente|Muy bueno|Bueno|Mejorable>",
-  "feedback": "<2-3 frases concretas de mejora>"
-}}"""
+{{"gancho":<1-10>,"claridad":<1-10>,"valor":<1-10>,"engagement":<1-10>,"hashtags":<1-10>,"total":<1-100>,"nivel":"<Excelente|Muy bueno|Bueno|Mejorable>","feedback":"<2-3 frases concretas>"}}"""
     response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
     raw = response.text.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(raw)
@@ -502,11 +497,7 @@ def render_historial():
     if not historial:
         st.markdown("<div style='text-align:center;color:#7070a0;font-size:13px;padding:2rem 0'>Aún no has generado ningún post.<br>¡Empieza buscando noticias!</div>", unsafe_allow_html=True)
         return
-    pill_map = {
-        "🏦 Banca": "sector-pill-banca",
-        "♟️ Estrategia & IA": "sector-pill-estrategia",
-        "📊 Analista de Datos": "sector-pill-datos",
-    }
+    pill_map = {"🏦 Banca": "sector-pill-banca", "♟️ Estrategia & IA": "sector-pill-estrategia", "📊 Analista de Datos": "sector-pill-datos"}
     for h in historial:
         pill = pill_map.get(h["sector"], "source-pill")
         st.markdown(f"""
@@ -536,7 +527,7 @@ for key, val in [("noticias", []), ("post_generado", ""), ("noticia_elegida", No
                   ("post_a", ""), ("post_b", ""),
                   ("recomendada", "A"), ("razon", ""),
                   ("tono_elegido", "aprendiendo"), ("historial", []),
-                  ("post_en", "")]:
+                  ("post_en", ""), ("edicion_key", 0)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -752,41 +743,53 @@ elif st.session_state.fase == "post":
     tab1, tab2, tab3, tab4 = st.tabs(["✏️ Editar", "🌍 Versión en inglés", "👁️ Vista previa", "📊 Puntuación"])
 
     with tab1:
+        # ── FIX botones edición guiada: sin key fijo en text_area ─────────────
+        # Usamos edicion_key para forzar que el widget se reconstruya con el nuevo valor
         post_editado = st.text_area(
-            label="", value=st.session_state.post_generado,
-            height=320, label_visibility="collapsed", key="editor"
+            label="",
+            value=st.session_state.post_generado,
+            height=320,
+            label_visibility="collapsed",
+            key=f"editor_{st.session_state.edicion_key}"
         )
-        st.session_state.post_generado = post_editado
+        # Solo actualizamos si el usuario editó manualmente (no tras botón)
+        if post_editado != st.session_state.post_generado:
+            st.session_state.post_generado = post_editado
 
-        # ── Edición guiada ─────────────────────────────────────────────────────
         st.markdown('<div class="edicion-guiada-label">✨ Edición guiada</div>', unsafe_allow_html=True)
         col_e1, col_e2, col_e3 = st.columns(3)
         with col_e1:
             if st.button("✂️ Más corto", use_container_width=True, key="ed_corto"):
                 with st.spinner("Condensando..."):
-                    st.session_state.post_generado = editar_post_guiado(
+                    nuevo = editar_post_guiado(
                         st.session_state.post_generado,
                         "Reduce el post a máximo 150 palabras. Conserva los mejores insights y la pregunta final. Elimina lo redundante."
                     )
+                    st.session_state.post_generado = nuevo
                     st.session_state.puntuacion = None
+                    st.session_state.edicion_key += 1
                     st.rerun()
         with col_e2:
             if st.button("🎣 Nuevo gancho", use_container_width=True, key="ed_gancho"):
                 with st.spinner("Reescribiendo gancho..."):
-                    st.session_state.post_generado = editar_post_guiado(
+                    nuevo = editar_post_guiado(
                         st.session_state.post_generado,
                         "Reescribe SOLO las primeras 1-2 líneas con un gancho más impactante y diferente. El resto del post queda igual."
                     )
+                    st.session_state.post_generado = nuevo
                     st.session_state.puntuacion = None
+                    st.session_state.edicion_key += 1
                     st.rerun()
         with col_e3:
             if st.button("📊 Añade dato", use_container_width=True, key="ed_dato"):
                 with st.spinner("Añadiendo dato..."):
-                    st.session_state.post_generado = editar_post_guiado(
+                    nuevo = editar_post_guiado(
                         st.session_state.post_generado,
-                        "Incorpora un dato, cifra o estadística concreta y relevante en el análisis. Si no hay datos en el post, invéntalo de forma verosímil para el sector."
+                        "Incorpora un dato, cifra o estadística concreta y relevante en el análisis. Si no hay datos, invéntalo de forma verosímil para el sector."
                     )
+                    st.session_state.post_generado = nuevo
                     st.session_state.puntuacion = None
+                    st.session_state.edicion_key += 1
                     st.rerun()
 
     with tab2:
@@ -863,6 +866,7 @@ elif st.session_state.fase == "post":
                 st.session_state.post_generado = generar_post(n, perfil, st.session_state.tono_elegido)
                 st.session_state.puntuacion = None
                 st.session_state.post_en = ""
+                st.session_state.edicion_key += 1
                 st.rerun()
     with col4:
         if st.button("← Buscar más noticias", use_container_width=True):
