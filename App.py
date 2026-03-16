@@ -66,6 +66,8 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .opcion-card-recomendada { background: rgba(74,222,128,0.05); border: 1.5px solid rgba(74,222,128,0.4); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 0.5rem; font-size: 13px; line-height: 1.75; color: #d0d0e0; white-space: pre-wrap; word-break: break-word; }
 .recomendada-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.35); color: #4ade80; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; margin-bottom: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .razon-badge { font-size: 12px; color: #4ade80; background: rgba(74,222,128,0.08); border-radius: 8px; padding: 6px 10px; margin-top: 8px; margin-bottom: 4px; line-height: 1.5; }
+.img-wrapper { border-radius: 14px; overflow: hidden; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08); }
+.img-caption { font-size: 11px; color: #7070a0; margin-top: 6px; margin-bottom: 1rem; }
 .li-card { background: #1b1f23; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem; }
 .li-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
 .li-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6c63ff, #9333ea); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: white; flex-shrink: 0; }
@@ -94,6 +96,34 @@ hr { border-color: rgba(255,255,255,0.07) !important; margin: 1.5rem 0 !importan
 </style>
 """, unsafe_allow_html=True)
 
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def extraer_imagen(entry) -> str:
+    """Extrae la URL de la imagen de portada de una entrada RSS."""
+    # 1. media:content
+    if hasattr(entry, "media_content"):
+        for m in entry.media_content:
+            url = m.get("url", "")
+            if url and any(url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+                return url
+    # 2. media:thumbnail
+    if hasattr(entry, "media_thumbnail"):
+        for m in entry.media_thumbnail:
+            url = m.get("url", "")
+            if url:
+                return url
+    # 3. enclosures
+    if hasattr(entry, "enclosures"):
+        for enc in entry.enclosures:
+            if enc.get("type", "").startswith("image"):
+                return enc.get("href", enc.get("url", ""))
+    # 4. og:image en el summary HTML
+    if hasattr(entry, "summary"):
+        match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', entry.summary)
+        if match:
+            return match.group(1)
+    return ""
+
 # ── Funciones ──────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -116,6 +146,7 @@ def fetch_noticias_por_sector() -> dict:
                         "resumen": entry.get("summary", entry.get("description", ""))[:400],
                         "url": entry.get("link", ""),
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
+                        "imagen": extraer_imagen(entry),  # ← NUEVO
                     })
             except Exception:
                 pass
@@ -152,11 +183,9 @@ INSTRUCCIONES COMUNES:
 
     resp_a = client.models.generate_content(model="gemini-flash-latest", contents=prompt_a)
     resp_b = client.models.generate_content(model="gemini-flash-latest", contents=prompt_b)
-
     post_a = resp_a.text.strip()
     post_b = resp_b.text.strip()
 
-    # ── Recomendar cuál encaja mejor con la noticia ────────────────────────────
     prompt_rec = f"""Eres un experto en contenido LinkedIn para profesionales de consultoría y finanzas.
 
 Dada esta noticia:
@@ -316,7 +345,6 @@ def render_puntuacion(score: dict):
     """, unsafe_allow_html=True)
 
 def render_opcion(post: str, label: str, es_recomendada: bool, razon: str, key: str):
-    """Renderiza una tarjeta de opción, en verde si es la recomendada."""
     if es_recomendada:
         st.markdown(f"""
         <div class="section-label" style="color:#4ade80">{label}</div>
@@ -329,11 +357,31 @@ def render_opcion(post: str, label: str, es_recomendada: bool, razon: str, key: 
         <div class="section-label">{label}</div>
         <div class="opcion-card">{post}</div>
         """, unsafe_allow_html=True)
-
     if st.button(f"✦  Elegir esta versión", key=key, use_container_width=True):
         st.session_state.post_generado = post
         st.session_state.fase = "post"
         st.rerun()
+
+def render_imagen_noticia(noticia: dict):
+    """Muestra la imagen de portada si existe, con enlace para abrirla."""
+    imagen_url = noticia.get("imagen", "")
+    if not imagen_url:
+        return
+    try:
+        # Verificar que la imagen carga antes de mostrarla
+        r = requests.head(imagen_url, timeout=5, allow_redirects=True)
+        if r.status_code != 200:
+            return
+    except Exception:
+        return
+
+    st.markdown('<div class="section-label">🖼️ Imagen de portada</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="img-wrapper"><img src="{imagen_url}" style="width:100%;display:block;"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="img-caption">Mantén pulsada la imagen para guardarla (móvil) · '
+        f'<a href="{imagen_url}" target="_blank" style="color:#6c63ff;text-decoration:none">Abrir imagen ↗</a></div>',
+        unsafe_allow_html=True
+    )
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -427,10 +475,8 @@ elif st.session_state.fase == "elegir_post":
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     rec = st.session_state.recomendada
     razon = st.session_state.razon
-
     render_opcion(
         post=st.session_state.post_a,
         label="Versión A — Analítica y técnica",
@@ -438,9 +484,7 @@ elif st.session_state.fase == "elegir_post":
         razon=razon if rec == "A" else "",
         key="elegir_a"
     )
-
     st.markdown("<div style='margin-bottom:1.5rem'></div>", unsafe_allow_html=True)
-
     render_opcion(
         post=st.session_state.post_b,
         label="Versión B — Cercana y reflexiva",
@@ -448,7 +492,6 @@ elif st.session_state.fase == "elegir_post":
         razon=razon if rec == "B" else "",
         key="elegir_b"
     )
-
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver a noticias"):
         st.session_state.fase = "noticias"
@@ -462,6 +505,7 @@ elif st.session_state.fase == "post":
     pill_class = {"banca": "sector-pill-banca", "estrategia": "sector-pill-estrategia", "datos": "sector-pill-datos"}
     pill = pill_class.get(sector, "source-pill")
     etiqueta = cfg.get("etiqueta", "")
+
     st.markdown("""
     <div class="post-header">
         <div class="post-icon">✦</div>
@@ -471,6 +515,7 @@ elif st.session_state.fase == "post":
         </div>
     </div>
     """, unsafe_allow_html=True)
+
     st.markdown(f"""
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
         <span class="{pill}">{etiqueta}</span>
@@ -479,6 +524,10 @@ elif st.session_state.fase == "post":
         <a href="{n['url']}" target="_blank" style="font-size:11px;color:#6c63ff;text-decoration:none">Ver noticia original ↗</a>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Imagen de portada ──────────────────────────────────────────────────────
+    render_imagen_noticia(n)
+
     tab1, tab2, tab3 = st.tabs(["✏️ Editar", "👁️ Vista previa LinkedIn", "📊 Puntuación"])
     with tab1:
         post_editado = st.text_area(
@@ -503,6 +552,7 @@ elif st.session_state.fase == "post":
             if st.button("🔄  Volver a puntuar"):
                 st.session_state.puntuacion = None
                 st.rerun()
+
     st.markdown("<hr>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
@@ -517,6 +567,7 @@ elif st.session_state.fase == "post":
                     st.success("✅ Enviado a Telegram.")
                 else:
                     st.error("❌ Error al enviar.")
+
     st.markdown("<hr>", unsafe_allow_html=True)
     col3, col4 = st.columns(2)
     with col3:
