@@ -375,26 +375,53 @@ def crear_carrusel_pdf(contenido: dict) -> bytes:
 
     def draw_portada(c, data, total):
         base(c, 1, total)
-        c.setFillColor(PUR); c.setFillAlpha(0.13)
-        c.circle(W - 60, H + 10, 220, fill=1, stroke=0)
+        MARGIN = 36
+        # Caja oscura de fondo — cubre toda la zona útil igual que los slides
+        c.setFillColor(colors.HexColor("#0e0e22"))
+        c.rect(0, MARGIN, W, H - MARGIN, fill=1, stroke=0)
+        # Barra lateral izquierda
+        c.setFillColor(PUR); c.rect(0, MARGIN, 7, H - MARGIN, fill=1, stroke=0)
+        # Círculo decorativo top-right
+        c.setFillColor(PUR); c.setFillAlpha(0.14)
+        c.circle(W - 40, H + 20, 200, fill=1, stroke=0)
         c.setFillAlpha(1.0)
-        c.setFillColor(PUR); c.rect(0, 0, 7, H, fill=1, stroke=0)
+
         sector_txt = data.get("sector","").replace("🏦","").replace("♟️","").replace("📊","").strip().upper()
-        bw = max(150, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 32)
+        # Tamaño dinámico del título — máx 2 líneas
+        for font_size in [46, 40, 34]:
+            t_lines = wrap(c, data.get("titulo_portada",""), "Helvetica-Bold", font_size, W * 0.60)
+            if len(t_lines) <= 2: break
+        line_h = font_size + 16
+        subtitulo_lines = wrap(c, data.get("subtitulo_portada",""), "Helvetica", 19, W * 0.65)[:2]
+
+        # Centrar verticalmente en la caja
+        badge_h = 28
+        total_h = badge_h + 22 + len(t_lines) * line_h + 26 + len(subtitulo_lines) * 30
+        box_h = H - MARGIN * 2
+        start_y = MARGIN + (box_h + total_h) / 2
+
+        # Badge
+        bw = max(160, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 36)
         c.setFillColor(colors.HexColor("#1a1830"))
-        c.roundRect(28, H - 60, bw, 26, 13, fill=1, stroke=0)
+        c.roundRect(28, start_y, bw, badge_h, 14, fill=1, stroke=0)
         c.setStrokeColor(PUR); c.setLineWidth(0.8)
-        c.roundRect(28, H - 60, bw, 26, 13, fill=0, stroke=1)
+        c.roundRect(28, start_y, bw, badge_h, 14, fill=0, stroke=1)
         c.setFillColor(PURT); c.setFont("Helvetica-Bold", 9)
-        c.drawString(28 + 14, H - 47, sector_txt)
-        titulo_lines = wrap(c, data.get("titulo_portada",""), "Helvetica-Bold", 46, W * 0.62)
-        c.setFillColor(TXT); y = H - 135
-        for line in titulo_lines[:3]:
-            c.setFont("Helvetica-Bold", 46); c.drawString(28, y, line); y -= 62
-        c.setFillColor(MUT); c.setFont("Helvetica", 18)
-        c.drawString(28, y - 10, data.get("subtitulo_portada","")[:70])
+        c.drawString(44, start_y + 10, sector_txt)
+
+        # Título
+        c.setFillColor(TXT); y = start_y - 46
+        for line in t_lines:
+            c.setFont("Helvetica-Bold", font_size); c.drawString(28, y, line); y -= line_h
+
+        # Subtítulo
+        c.setFillColor(MUT); ys = y - 14
+        for sl in subtitulo_lines:
+            c.setFont("Helvetica", 19); c.drawString(28, ys, sl); ys -= 30
+
+        # Autor anclado al fondo de la caja
         c.setFillColor(MUT); c.setFont("Helvetica", 11)
-        c.drawString(28, 32, "Julen · Business & Data Analytics · MSc Big Data & IA")
+        c.drawString(28, MARGIN + 14, "Julen · Business & Data Analytics · MSc Big Data & IA")
         c.showPage()
 
     def draw_contenido(c, slide, idx, total):
