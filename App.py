@@ -945,63 +945,285 @@ elif st.session_state.fase == "dashboard":
 
     with tab_linkedin:
         import plotly.express as px
-        st.markdown('<div class="section-label">Sube tus datos reales</div>', unsafe_allow_html=True)
-        archivo_subido = st.file_uploader("Arrastra tu Excel de LinkedIn", type=["xlsx"])
-        if archivo_subido is not None:
+        import plotly.graph_objects as go
+
+        # ── Helpers para parsear Excel de LinkedIn ─────────────────────────────
+        def _get_val(df, label):
             try:
-                df_rendimiento = pd.read_excel(archivo_subido, sheet_name=0, header=None)
-                df_detallada = pd.read_excel(archivo_subido, sheet_name=1)
-                df_detallada.columns = [str(c).strip().lower() for c in df_detallada.columns]
-                col_cat, col_val, col_pct = df_detallada.columns[0], df_detallada.columns[1], df_detallada.columns[2]
-                df_detallada[col_pct] = (pd.to_numeric(df_detallada[col_pct], errors='coerce') * 100).round(1)
-                def get_val_num(df, label):
-                    try:
-                        fila = df[df[0].astype(str).str.contains(label, case=False, na=False)]
-                        val = fila.iloc[0, 1]
-                        return int(pd.to_numeric(val, errors='coerce'))
-                    except: return 0
-                st.session_state.datos_li_guardados = {
-                    "impresiones": get_val_num(df_rendimiento, "Impresiones"),
-                    "alcance": get_val_num(df_rendimiento, "Miembros alcanzados"),
-                    "clics": get_val_num(df_rendimiento, "Visitas a los enlaces"),
-                    "perfil_v": get_val_num(df_rendimiento, "Visualizaciones del perfil"),
-                    "df_sectores": df_detallada[df_detallada[col_cat].astype(str).str.contains("Sector", case=False, na=False)].head(5),
-                    "df_ciudades": df_detallada[df_detallada[col_cat].astype(str).str.contains("Ubicación|Ubicacion", case=False, na=False)].head(5),
-                    "col_val": col_val, "col_pct": col_pct,
-                }
-            except Exception as e:
-                st.error(f"Error al procesar el archivo: {e}")
-        if st.session_state.datos_li_guardados:
-            d = st.session_state.datos_li_guardados
-            col_val = d.get("col_val","")
-            col_pct = d.get("col_pct","")
-            st.markdown("### 📊 Métricas de impacto")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Impresiones", f"{d['impresiones']:,}".replace(",", "."))
-            c2.metric("Alcance", f"{d['alcance']:,}".replace(",", "."))
-            c3.metric("Clics Web", d['clics'])
-            c4.metric("Visitas Perfil", d['perfil_v'])
-            st.markdown('<div class="section-label">👥 Análisis de Audiencia</div>', unsafe_allow_html=True)
-            fig_sec = px.bar(d['df_sectores'], x=col_pct, y=col_val, orientation='h',
-                             text=[f"{v}%" for v in d['df_sectores'][col_pct]],
-                             color_discrete_sequence=['#6c63ff'], labels={col_pct: 'Porcentaje %', col_val: ''})
-            fig_sec.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#f0f0f8", height=300, margin=dict(l=0, r=0, t=20, b=0))
-            st.write("**¿De qué sectores son tus lectores?**")
-            st.plotly_chart(fig_sec, use_container_width=True, config={'displayModeBar': False})
-            fig_ciu = px.pie(d['df_ciudades'], values=col_pct, names=col_val, hole=0.6,
-                             color_discrete_sequence=px.colors.sequential.Purples_r)
-            fig_ciu.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#f0f0f8", height=350, margin=dict(t=30, b=0))
-            st.write("**¿Desde dónde te ven?**")
-            st.plotly_chart(fig_ciu, use_container_width=True)
-            st.markdown('<div class="section-label">💡 Próxima Estrategia</div>', unsafe_allow_html=True)
-            with st.spinner("Gemini analizando..."):
-                ctx = {"sectores": d['df_sectores'][col_val].tolist(), "ciudades": d['df_ciudades'][col_val].tolist(), "impresiones": d['impresiones']}
-                st.success(sugerir_estrategia_proximo_post(ctx))
-            if st.button("🗑️ Borrar datos y subir nuevo"):
-                st.session_state.datos_li_guardados = None
-                st.rerun()
+                fila = df[df[0].astype(str).str.contains(label, case=False, na=False)]
+                return int(pd.to_numeric(fila.iloc[0, 1], errors='coerce'))
+            except: return 0
+
+        def _get_txt(df, label):
+            try:
+                fila = df[df[0].astype(str).str.contains(label, case=False, na=False)]
+                return str(fila.iloc[0, 1])
+            except: return ""
+
+        def _parse_fecha(s):
+            """Convierte '15 mar. 2026' → date"""
+            meses = {"ene":1,"feb":2,"mar":3,"abr":4,"may":5,"jun":6,
+                     "jul":7,"ago":8,"sep":9,"oct":10,"nov":11,"dic":12}
+            try:
+                parts = s.replace(".","").strip().split()
+                d, m, y = int(parts[0]), meses.get(parts[1].lower()[:3], 1), int(parts[2])
+                from datetime import date
+                return date(y, m, d)
+            except: return None
+
+        def parsear_excel_li(file_bytes):
+            """Parsea un Excel de LinkedIn y devuelve dict listo para Supabase."""
+            df_r = pd.read_excel(file_bytes, sheet_name=0, header=None)
+            df_d = pd.read_excel(file_bytes, sheet_name=1)
+            df_d.columns = [str(c).strip().lower() for c in df_d.columns]
+            col_cat, col_val2, col_pct2 = df_d.columns[0], df_d.columns[1], df_d.columns[2]
+            df_d[col_pct2] = (pd.to_numeric(df_d[col_pct2], errors='coerce') * 100).round(1)
+
+            url = _get_txt(df_r, "URL de la publicación")
+            fecha_str = _get_txt(df_r, "Fecha de publicación")
+            fecha = _parse_fecha(fecha_str)
+
+            # Audiencia detallada como JSON
+            audiencia = {}
+            for cat in df_d[col_cat].dropna().unique():
+                rows = df_d[df_d[col_cat] == cat][[col_val2, col_pct2]].values.tolist()
+                audiencia[str(cat)] = [{"valor": r[0], "pct": r[1]} for r in rows]
+
+            return {
+                "url": url,
+                "fecha": str(fecha) if fecha else None,
+                "hora": _get_txt(df_r, "Hora de publicación"),
+                "impresiones": _get_val(df_r, "Impresiones"),
+                "alcance": _get_val(df_r, "Miembros alcanzados"),
+                "reacciones": _get_val(df_r, "Reacciones"),
+                "comentarios": _get_val(df_r, "Comentarios"),
+                "compartidos": _get_val(df_r, "Veces compartido"),
+                "guardados": _get_val(df_r, "Veces guardado"),
+                "visitas_perfil": _get_val(df_r, "Visualizaciones del perfil"),
+                "seguidores_ganados": _get_val(df_r, "Seguidores obtenidos"),
+                "visitas_enlaces": _get_val(df_r, "Visitas a los enlaces"),
+                "cargo_principal": _get_txt(df_r, "Cargo principal"),
+                "ubicacion_principal": _get_txt(df_r, "Ubicación principal"),
+                "sector_principal": _get_txt(df_r, "Sector principal"),
+                "audiencia_detalle": json.dumps(audiencia, ensure_ascii=False),
+            }
+
+        def sb_guardar_analytics(entrada: dict):
+            """Upsert en linkedin_posts_analytics (URL como clave única)."""
+            try:
+                headers = {**_sb_headers(), "Prefer": "resolution=merge-duplicates"}
+                r = requests.post(
+                    f"{SUPABASE_URL}/rest/v1/linkedin_posts_analytics",
+                    headers=headers, json=entrada, timeout=10
+                )
+                return r.status_code in (200, 201)
+            except: return False
+
+        def sb_cargar_analytics():
+            """Carga todos los posts de analytics ordenados por fecha."""
+            try:
+                r = requests.get(
+                    f"{SUPABASE_URL}/rest/v1/linkedin_posts_analytics?order=fecha.asc&limit=500",
+                    headers=_sb_headers(), timeout=10
+                )
+                if r.status_code == 200:
+                    return r.json()
+            except: pass
+            return []
+
+        # ── Cargar datos históricos desde Supabase ─────────────────────────────
+        if "analytics_posts" not in st.session_state:
+            st.session_state.analytics_posts = sb_cargar_analytics()
+
+        posts_data = st.session_state.analytics_posts
+
+        # ── Uploader múltiple ──────────────────────────────────────────────────
+        st.markdown('<div class="section-label">📥 Subir Excels de LinkedIn</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:12px">Puedes subir varios a la vez — se acumulan en la base de datos sin duplicarse</div>', unsafe_allow_html=True)
+
+        archivos = st.file_uploader(
+            "Arrastra uno o varios Excels de LinkedIn",
+            type=["xlsx"],
+            accept_multiple_files=True,
+            key="li_uploader"
+        )
+
+        if archivos:
+            nuevos = 0; duplicados = 0; errores = 0
+            urls_existentes = {p.get("url","") for p in posts_data}
+            for archivo in archivos:
+                try:
+                    datos = parsear_excel_li(archivo)
+                    if datos["url"] in urls_existentes:
+                        duplicados += 1
+                        continue
+                    ok = sb_guardar_analytics(datos)
+                    if ok:
+                        nuevos += 1
+                        posts_data.append(datos)
+                        urls_existentes.add(datos["url"])
+                    else:
+                        errores += 1
+                except Exception as e:
+                    errores += 1
+            st.session_state.analytics_posts = posts_data
+
+            msg = []
+            if nuevos: msg.append(f"✅ {nuevos} post{'s' if nuevos>1 else ''} guardado{'s' if nuevos>1 else ''}")
+            if duplicados: msg.append(f"⚠️ {duplicados} ya existía{'n' if duplicados>1 else ''}")
+            if errores: msg.append(f"❌ {errores} error{'es' if errores>1 else ''}")
+            if msg: st.info(" · ".join(msg))
+
+        # ── Dashboard solo si hay datos ────────────────────────────────────────
+        if not posts_data:
+            st.markdown("<div style='text-align:center;color:#7070a0;font-size:13px;padding:3rem 0'>Sube tu primer Excel de LinkedIn para ver el dashboard</div>", unsafe_allow_html=True)
         else:
-            st.info("👆 Sube tu archivo Excel para ver los gráficos interactivos.")
+            df = pd.DataFrame(posts_data)
+            df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
+            df = df.dropna(subset=["fecha"]).sort_values("fecha")
+            df["engagement"] = df["reacciones"] + df["comentarios"] + df["compartidos"] + df["guardados"]
+
+            total_posts = len(df)
+            total_imp = int(df["impresiones"].sum())
+            total_reac = int(df["reacciones"].sum())
+            total_com = int(df["comentarios"].sum())
+            mejor_post = df.loc[df["impresiones"].idxmax()]
+            eng_rate = round((df["engagement"].sum() / df["impresiones"].sum() * 100), 2) if total_imp > 0 else 0
+
+            # ── KPIs ───────────────────────────────────────────────────────────
+            st.markdown('<div class="section-label">📊 Resumen total</div>', unsafe_allow_html=True)
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Posts", total_posts)
+            c2.metric("Impresiones", f"{total_imp:,}".replace(",","."))
+            c3.metric("Reacciones", total_reac)
+            c4.metric("Comentarios", total_com)
+            c5.metric("Engagement rate", f"{eng_rate}%")
+
+            # ── Gráfico evolución temporal ─────────────────────────────────────
+            st.markdown('<div class="section-label">📈 Evolución por post</div>', unsafe_allow_html=True)
+
+            df["fecha_str"] = df["fecha"].dt.strftime("%d %b")
+
+            fig_evo = go.Figure()
+            fig_evo.add_trace(go.Scatter(
+                x=df["fecha_str"], y=df["impresiones"],
+                name="Impresiones", mode="lines+markers",
+                line=dict(color="#6c63ff", width=2.5),
+                marker=dict(size=8, color="#6c63ff"),
+                fill="tozeroy", fillcolor="rgba(108,99,255,0.08)"
+            ))
+            fig_evo.add_trace(go.Scatter(
+                x=df["fecha_str"], y=df["reacciones"],
+                name="Reacciones", mode="lines+markers",
+                line=dict(color="#4ade80", width=2.5),
+                marker=dict(size=8, color="#4ade80")
+            ))
+            fig_evo.add_trace(go.Scatter(
+                x=df["fecha_str"], y=df["comentarios"],
+                name="Comentarios", mode="lines+markers",
+                line=dict(color="#fbbf24", width=2.5),
+                marker=dict(size=8, color="#fbbf24")
+            ))
+            fig_evo.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font_color="#f0f0f8",
+                height=340,
+                margin=dict(l=0, r=0, t=10, b=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+                            bgcolor="rgba(0,0,0,0)", font=dict(size=11)),
+                xaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickfont=dict(size=10)),
+                hovermode="x unified"
+            )
+            st.plotly_chart(fig_evo, use_container_width=True, config={"displayModeBar": False})
+
+            # ── Mejor post ─────────────────────────────────────────────────────
+            st.markdown('<div class="section-label">🏆 Mejor post hasta ahora</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background:#13131a;border:1px solid rgba(108,99,255,0.3);border-radius:14px;padding:1rem 1.2rem">
+                <div style="font-size:11px;color:#a78bfa;margin-bottom:6px">📅 {mejor_post['fecha'].strftime('%d %b %Y') if pd.notnull(mejor_post['fecha']) else ''} · {mejor_post.get('sector_principal','')}</div>
+                <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:8px">
+                    <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#6c63ff">{int(mejor_post['impresiones'])}</div><div style="font-size:10px;color:#7070a0">impresiones</div></div>
+                    <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#4ade80">{int(mejor_post['reacciones'])}</div><div style="font-size:10px;color:#7070a0">reacciones</div></div>
+                    <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fbbf24">{int(mejor_post['comentarios'])}</div><div style="font-size:10px;color:#7070a0">comentarios</div></div>
+                    <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f0f0f8">{int(mejor_post['visitas_perfil'])}</div><div style="font-size:10px;color:#7070a0">visitas perfil</div></div>
+                </div>
+                <div style="margin-top:10px"><a href="{mejor_post.get('url','')}" target="_blank" style="font-size:11px;color:#6c63ff;text-decoration:none">Ver post en LinkedIn ↗</a></div>
+            </div>""", unsafe_allow_html=True)
+
+            # ── Audiencia agregada ─────────────────────────────────────────────
+            st.markdown('<div class="section-label">👥 Audiencia agregada</div>', unsafe_allow_html=True)
+
+            # Consolidar audiencia de todos los posts
+            sector_agg = {}; ciudad_agg = {}; cargo_agg = {}
+            for p in posts_data:
+                try:
+                    aud = json.loads(p.get("audiencia_detalle") or "{}")
+                    for cat, items in aud.items():
+                        cat_l = cat.lower()
+                        for item in items:
+                            v, pct = item.get("valor",""), item.get("pct", 0)
+                            if "sector" in cat_l:
+                                sector_agg[v] = sector_agg.get(v, 0) + pct
+                            elif "ubicación" in cat_l or "ubicacion" in cat_l:
+                                ciudad_agg[v] = ciudad_agg.get(v, 0) + pct
+                            elif "cargo" in cat_l:
+                                cargo_agg[v] = cargo_agg.get(v, 0) + pct
+                except: pass
+
+            col_aud1, col_aud2 = st.columns(2)
+
+            with col_aud1:
+                if sector_agg:
+                    df_sec = pd.DataFrame(sorted(sector_agg.items(), key=lambda x:-x[1])[:6], columns=["Sector","Score"])
+                    fig_sec2 = px.bar(df_sec, x="Score", y="Sector", orientation="h",
+                                      color_discrete_sequence=["#6c63ff"])
+                    fig_sec2.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                           font_color="#f0f0f8", height=260, margin=dict(l=0,r=0,t=20,b=0),
+                                           xaxis=dict(showgrid=False, visible=False),
+                                           yaxis=dict(tickfont=dict(size=10)))
+                    st.markdown("<div style='font-size:12px;color:#d0d0e0;margin-bottom:4px'>Sectores que te leen</div>", unsafe_allow_html=True)
+                    st.plotly_chart(fig_sec2, use_container_width=True, config={"displayModeBar": False})
+
+            with col_aud2:
+                if ciudad_agg:
+                    df_ciu = pd.DataFrame(sorted(ciudad_agg.items(), key=lambda x:-x[1])[:5], columns=["Ciudad","Score"])
+                    fig_ciu2 = px.pie(df_ciu, values="Score", names="Ciudad", hole=0.55,
+                                      color_discrete_sequence=["#6c63ff","#a78bfa","#4ade80","#fbbf24","#f87171"])
+                    fig_ciu2.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#f0f0f8",
+                                           height=260, margin=dict(t=20,b=0,l=0,r=0),
+                                           legend=dict(font=dict(size=10), bgcolor="rgba(0,0,0,0)"))
+                    st.markdown("<div style='font-size:12px;color:#d0d0e0;margin-bottom:4px'>Ciudades</div>", unsafe_allow_html=True)
+                    st.plotly_chart(fig_ciu2, use_container_width=True, config={"displayModeBar": False})
+
+            if cargo_agg:
+                df_car = pd.DataFrame(sorted(cargo_agg.items(), key=lambda x:-x[1])[:6], columns=["Cargo","Score"])
+                fig_car = px.bar(df_car, x="Score", y="Cargo", orientation="h",
+                                 color_discrete_sequence=["#4ade80"])
+                fig_car.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                      font_color="#f0f0f8", height=240, margin=dict(l=0,r=0,t=20,b=0),
+                                      xaxis=dict(showgrid=False, visible=False),
+                                      yaxis=dict(tickfont=dict(size=10)))
+                st.markdown('<div class="section-label">💼 Cargos que te leen</div>', unsafe_allow_html=True)
+                st.plotly_chart(fig_car, use_container_width=True, config={"displayModeBar": False})
+
+            # ── Insight Gemini ─────────────────────────────────────────────────
+            if len(df) >= 2:
+                st.markdown('<div class="section-label">💡 Insight IA</div>', unsafe_allow_html=True)
+                if st.button("🤖 Analizar mis datos y dame estrategia", use_container_width=True, key="btn_insight"):
+                    with st.spinner("Gemini analizando tus datos reales..."):
+                        ctx = {
+                            "total_posts": total_posts,
+                            "impresiones_totales": total_imp,
+                            "engagement_rate": eng_rate,
+                            "mejor_sector": mejor_post.get("sector_principal",""),
+                            "sectores_audiencia": list(sector_agg.keys())[:5],
+                            "ciudades": list(ciudad_agg.keys())[:3],
+                            "cargos": list(cargo_agg.keys())[:3],
+                            "evolucion_impresiones": df["impresiones"].tolist(),
+                        }
+                        st.success(sugerir_estrategia_proximo_post(ctx))
 
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
