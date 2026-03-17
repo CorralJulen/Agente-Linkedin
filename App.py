@@ -757,6 +757,7 @@ def render_analisis_competencia(data):
     </div>""", unsafe_allow_html=True)
 
 def render_dashboard():
+    """Dashboard de estadísticas de rendimiento."""
     historial = st.session_state.get("historial", [])
     if not historial:
         st.markdown("<div style='text-align:center;color:#7070a0;font-size:13px;padding:3rem 0'>Aún no hay datos.<br>¡Publica tu primer post para ver estadísticas!</div>", unsafe_allow_html=True)
@@ -766,6 +767,7 @@ def render_dashboard():
     _, semanas_cons = calcular_racha()
     ahora = datetime.now()
 
+    # Racha máxima histórica
     semanas_set = set()
     for h in historial:
         d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
@@ -781,6 +783,7 @@ def render_dashboard():
         else:
             racha_actual = 0
 
+    # Posts por semana (últimas 8 semanas)
     semanas_labels = []
     semanas_counts = []
     for i in range(7, -1, -1):
@@ -792,16 +795,19 @@ def render_dashboard():
         semanas_labels.append(f"S{iso[1]}")
         semanas_counts.append(count)
 
+    # Sectores
     sector_counts = {}
     for h in historial:
         s = h.get("sector","Otro")
         sector_counts[s] = sector_counts.get(s, 0) + 1
 
+    # Tonos
     tono_counts = {}
     for h in historial:
         t = h.get("tono","Otro")
         tono_counts[t] = tono_counts.get(t, 0) + 1
 
+    # ── Métricas clave ──────────────────────────────────────────────────────────
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">{total}</div><div class="dash-metric-label">posts totales</div></div>', unsafe_allow_html=True)
@@ -810,6 +816,7 @@ def render_dashboard():
     with col3:
         st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">⭐ {racha_max}</div><div class="dash-metric-label">racha máxima</div></div>', unsafe_allow_html=True)
 
+    # ── Gráfico de barras semanal ───────────────────────────────────────────────
     st.markdown('<div class="section-label">📈 Posts por semana (últimas 8 semanas)</div>', unsafe_allow_html=True)
     max_count = max(semanas_counts) if max(semanas_counts) > 0 else 1
     bars_html = '<div style="display:flex;gap:8px;align-items:flex-end;height:100px;margin-bottom:8px">'
@@ -826,6 +833,7 @@ def render_dashboard():
     bars_html += '</div>'
     st.markdown(bars_html, unsafe_allow_html=True)
 
+    # ── Sectores ───────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">🏷️ Sectores más publicados</div>', unsafe_allow_html=True)
     sector_colors = {"🏦 Banca": "#3b82f6", "♟️ Estrategia & IA": "#a855f7", "📊 Analista de Datos": "#14b8a6"}
     sector_html = ""
@@ -839,6 +847,7 @@ def render_dashboard():
         </div>'''
     st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem 1.2rem">{sector_html}</div>', unsafe_allow_html=True)
 
+    # ── Tonos ──────────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">🎭 Tonos utilizados</div>', unsafe_allow_html=True)
     tono_colors = {"🎓 Estoy aprendiendo": "#fbbf24", "💼 Quiero parecer senior": "#6c63ff", "🔥 Quiero generar debate": "#f87171"}
     tono_html = ""
@@ -951,17 +960,27 @@ elif st.session_state.fase == "dashboard":
         
         if archivo_subido is not None:
             try:
+                # Lectura robusta de hojas por posición
                 df_rendimiento = pd.read_excel(archivo_subido, sheet_name=0, header=None)
                 df_detallada = pd.read_excel(archivo_subido, sheet_name=1)
                 
+                # Normalización de columnas para la segunda hoja
+                df_detallada.columns = [str(c).strip().lower() for c in df_detallada.columns]
+                col_cat = df_detallada.columns[0]
+                col_val = df_detallada.columns[1]
+                col_pct = df_detallada.columns[2]
+
+                # Función de búsqueda flexible para la primera hoja
                 def get_val(df, label):
-                    res = df[df[0] == label][1]
-                    return res.values[0] if not res.empty else 0
+                    try:
+                        fila = df[df[0].astype(str).str.contains(label, case=False, na=False)]
+                        return fila.iloc[0, 1]
+                    except: return 0
 
                 impresiones = get_val(df_rendimiento, "Impresiones")
                 alcance = get_val(df_rendimiento, "Miembros alcanzados")
-                clics = get_val(df_rendimiento, "Visitas a los enlaces de esta publicación")
-                perfil_v = get_val(df_rendimiento, "Visualizaciones del perfil desde esta publicación")
+                clics = get_val(df_rendimiento, "Visitas a los enlaces")
+                perfil_v = get_val(df_rendimiento, "Visualizaciones del perfil")
 
                 st.markdown("### 📊 Métricas de impacto")
                 c1, c2, c3, c4 = st.columns(4)
@@ -975,29 +994,29 @@ elif st.session_state.fase == "dashboard":
                 
                 with col_info1:
                     st.write("**Top Sectores:**")
-                    sectores = df_detallada[df_detallada['Categoría'] == 'Sector'][['Valor', '%']].head(3)
+                    sectores = df_detallada[df_detallada[col_cat].astype(str).str.contains("Sector", case=False, na=False)].head(3)
                     for _, row in sectores.iterrows():
-                        st.markdown(f"- {row['Valor']} ({row['%']})")
+                        st.markdown(f"- {row[col_val]} ({row[col_pct]})")
 
                 with col_info2:
                     st.write("**Ubicación:**")
-                    ciudades = df_detallada[df_detallada['Categoría'] == 'Ubicación'][['Valor', '%']].head(3)
+                    ciudades = df_detallada[df_detallada[col_cat].astype(str).str.contains("Ubicación|Ubicacion", case=False, na=False)].head(3)
                     for _, row in ciudades.iterrows():
-                        st.markdown(f"- {row['Valor']} ({row['%']})")
+                        st.markdown(f"- {row[col_val]} ({row[col_pct]})")
 
                 # Sugerencia de estrategia basada en datos
                 st.markdown('<div class="section-label">💡 Próxima Estrategia Recomendada</div>', unsafe_allow_html=True)
                 with st.spinner("Analizando tu audiencia para sugerir cambios..."):
                     contexto_audiencia = {
-                        "sectores": sectores['Valor'].tolist(),
-                        "ciudades": ciudades['Valor'].tolist(),
+                        "sectores": sectores[col_val].tolist() if not sectores.empty else ["Desconocido"],
+                        "ciudades": ciudades[col_val].tolist() if not ciudades.empty else ["Desconocido"],
                         "impresiones": impresiones
                     }
                     estrategia = sugerir_estrategia_proximo_post(contexto_audiencia)
                     st.success(estrategia)
 
             except Exception as e:
-                st.error(f"Error al procesar el Excel. Asegúrate de subir el archivo descargado de LinkedIn.")
+                st.error(f"Error técnico al procesar el archivo: {str(e)}")
         else:
             st.info("👆 Sube tu Excel para cruzar los datos de rendimiento con los de audiencia.")
 
