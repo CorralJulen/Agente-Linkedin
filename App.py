@@ -153,20 +153,24 @@ def sb_cargar_historial():
         )
         if r.status_code == 200:
             return r.json()
-    except Exception:
-        pass
+        else:
+            st.error(f"Error Supabase (Cargar Historial): {r.status_code} - {r.text}")
+    except Exception as e:
+        st.error(f"Error de red (Cargar Historial): {e}")
     return []
 
 def sb_guardar_post(entrada: dict):
     """Inserta un post en Supabase."""
     try:
-        requests.post(
+        r = requests.post(
             f"{SUPABASE_URL}/rest/v1/linkedin_historial",
             headers=_sb_headers(),
             json=entrada, timeout=10
         )
-    except Exception:
-        pass
+        if r.status_code not in (200, 201):
+            st.error(f"Error Supabase (Guardar Post): {r.status_code} - {r.text}")
+    except Exception as e:
+        st.error(f"Error de red (Guardar Post): {e}")
 
 def sb_cargar_config(clave: str, default):
     """Lee un valor de linkedin_config."""
@@ -179,21 +183,25 @@ def sb_cargar_config(clave: str, default):
             data = r.json()
             if data:
                 return json.loads(data[0]["valor"])
-    except Exception:
-        pass
+        else:
+            st.error(f"Error Supabase (Cargar Config): {r.status_code} - {r.text}")
+    except Exception as e:
+        st.error(f"Error de red (Cargar Config): {e}")
     return default
 
 def sb_guardar_config(clave: str, valor):
     """Upsert en linkedin_config."""
     try:
         headers = {**_sb_headers(), "Prefer": "resolution=merge-duplicates"}
-        requests.post(
+        r = requests.post(
             f"{SUPABASE_URL}/rest/v1/linkedin_config",
             headers=headers,
             json={"clave": clave, "valor": json.dumps(valor)}, timeout=10
         )
-    except Exception:
-        pass
+        if r.status_code not in (200, 201):
+            st.error(f"Error Supabase (Guardar Config): {r.status_code} - {r.text}")
+    except Exception as e:
+        st.error(f"Error de red (Guardar Config): {e}")
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
