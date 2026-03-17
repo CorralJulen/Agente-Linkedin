@@ -51,7 +51,7 @@ TONOS = {
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 # ── Página ─────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="LinkedIn Agent", page_icon="logo.png", layout="centered")
+st.set_page_config(page_title="LinkedIn Agent", page_icon="https://raw.githubusercontent.com/CorralJulen/Agente-Linkedin/main/logo.png", layout="centered")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
