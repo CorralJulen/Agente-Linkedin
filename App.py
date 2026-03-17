@@ -52,7 +52,7 @@ TONOS = {
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 # ── Página ─────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="LinkedIn Agent", page_icon="https://raw.githubusercontent.com/CorralJulen/Agente-Linkedin/main/logo.png", layout="centered")
+st.set_page_config(page_title="Agente LinK", page_icon="https://raw.githubusercontent.com/CorralJulen/Agente-Linkedin/main/logo.png", layout="centered")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -953,10 +953,35 @@ elif st.session_state.fase == "dashboard":
         <div class="post-icon">📊</div>
         <div>
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Dashboard</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">Tu actividad en LinkedIn</div>
+            <div style="font-size:12px;color:#7070a0;margin-top:2px">Analítica y actividad en LinkedIn</div>
         </div>
     </div>""", unsafe_allow_html=True)
-    render_dashboard()
+    
+    tab_app, tab_linkedin = st.tabs(["⚡ Actividad del Agente", "📈 Analítica de LinkedIn"])
+    
+    with tab_app:
+        render_dashboard()
+        
+    with tab_linkedin:
+        st.markdown('<div class="section-label">Sube tus datos reales</div>', unsafe_allow_html=True)
+        st.write("Sube el archivo de métricas que descargas desde tu perfil de LinkedIn para cruzar los datos y visualizar tu impacto.")
+        
+        archivo_subido = st.file_uploader("Arrastra tu archivo Excel o CSV de LinkedIn", type=["xls", "xlsx", "csv"])
+        
+        if archivo_subido is not None:
+            try:
+                if archivo_subido.name.endswith('.csv'):
+                    df = pd.read_csv(archivo_subido)
+                else:
+                    df = pd.read_excel(archivo_subido)
+                
+                st.markdown('<div class="section-label">Vista previa de los datos</div>', unsafe_allow_html=True)
+                st.dataframe(df.head())
+            except Exception as e:
+                st.error(f"Hubo un error al leer el archivo: {e}")
+        else:
+            st.info("👆 Sube tu archivo para que podamos leer las columnas y generar los gráficos automáticos.")
+
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
         st.session_state.fase = "inicio"
