@@ -326,10 +326,18 @@ def fetch_noticias_por_sector():
 def generar_dos_posts(noticia, perfil, tono):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
+    
     base = f"""Eres un {perfil} junior. MSc Big Data, IA y Business Analytics en curso.
 NOTICIA: {noticia['titulo']} | {noticia['fuente']} | {noticia['resumen']}
 TONO: {instruccion_tono}
-Post ESPAÑOL 150-250 palabras. Gancho → análisis → pregunta abierta. 3-5 insights. 5-8 hashtags. NO menciones IA. SOLO el texto."""
+
+REGLAS ESTRICTAS DE FORMATO Y ESTILO:
+1. ESTRUCTURA: Escribe párrafos cortos de máximo 2-3 líneas. Usa siempre un doble salto de línea entre párrafos para evitar muros de texto.
+2. EMOJIS: Usa un máximo de 2 emojis en todo el texto (solo al principio o al final de las frases).
+3. CIERRE: Termina con una pregunta polarizante o desafiante sobre el sector que invite al debate en los comentarios.
+4. PARÁMETROS: Post en ESPAÑOL (150-250 palabras). Gancho → análisis (3-5 insights) → pregunta. 5-8 hashtags al final.
+NO menciones que eres una IA. Devuelve SOLO el texto del post."""
+
     resp_a = client.models.generate_content(model="gemini-flash-latest", contents=base+"\nESTILO: Analítico y técnico.")
     resp_b = client.models.generate_content(model="gemini-flash-latest", contents=base+"\nESTILO: Cercano y reflexivo, storytelling.")
     post_a, post_b = resp_a.text.strip(), resp_b.text.strip()
@@ -342,13 +350,22 @@ Post ESPAÑOL 150-250 palabras. Gancho → análisis → pregunta abierta. 3-5 i
         recomendada, razon = "A", ""
     return post_a, post_b, recomendada, razon
 
+
 def generar_post(noticia, perfil, tono="aprendiendo"):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
-    prompt = f"""Eres un {perfil} junior. MSc Big Data, IA y Business Analytics.
+    
+    prompt = f"""Eres un {perfil} junior. MSc Big Data, IA y Business Analytics en curso.
 NOTICIA: {noticia['titulo']} | {noticia['fuente']} | {noticia['resumen']}
 TONO: {instruccion_tono}
-Post ESPAÑOL 150-250 palabras. Gancho → análisis → pregunta. 3-5 insights. 5-8 hashtags. NO IA. SOLO texto."""
+
+REGLAS ESTRICTAS DE FORMATO Y ESTILO:
+1. ESTRUCTURA: Escribe párrafos cortos de máximo 2-3 líneas. Usa siempre un doble salto de línea entre párrafos para evitar muros de texto.
+2. EMOJIS: Usa un máximo de 2 emojis en todo el texto (solo al principio o al final de las frases).
+3. CIERRE: Termina con una pregunta polarizante o desafiante sobre el sector que invite al debate en los comentarios.
+4. PARÁMETROS: Post en ESPAÑOL (150-250 palabras). Gancho → análisis (3-5 insights) → pregunta. 5-8 hashtags al final.
+NO menciones que eres una IA. Devuelve SOLO el texto del post."""
+
     return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
 
 def editar_post_guiado(post, instruccion):
