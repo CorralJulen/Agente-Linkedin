@@ -691,12 +691,14 @@ def render_calendario():
     html_dias += '</div>'
     st.markdown(html_dias, unsafe_allow_html=True)
     st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px;margin-bottom:6px">Configura tus días de publicación:</div>', unsafe_allow_html=True)
-    opciones = st.multiselect("", options=list(range(7)), default=dias_pub,
-        format_func=lambda x: DIAS_SEMANA[x], label_visibility="collapsed", key="sel_dias_pub")
-    if opciones != dias_pub:
-        st.session_state.dias_publicacion = opciones
-        sb_guardar_config("dias_publicacion", opciones)
-        st.rerun()
+    def _guardar_dias():
+        nuevos = st.session_state.sel_dias_pub
+        st.session_state.dias_publicacion = nuevos
+        sb_guardar_config("dias_publicacion", nuevos)
+
+    st.multiselect("", options=list(range(7)), default=dias_pub,
+        format_func=lambda x: DIAS_SEMANA[x], label_visibility="collapsed",
+        key="sel_dias_pub", on_change=_guardar_dias)
     pendientes = len([d for d in dias_pub if d >= ahora.weekday() and d not in dias_con_post])
     if ahora.weekday() in dias_pub and ahora.weekday() not in dias_con_post:
         st.markdown('<div style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.3);border-radius:12px;padding:10px 14px;font-size:13px;color:#a78bfa;margin-top:10px">⚡ Hoy toca publicar — ¡busca una noticia!</div>', unsafe_allow_html=True)
@@ -907,17 +909,16 @@ if st.session_state.fase == "inicio":
     st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
     render_calendario()
 
-    if st.session_state.historial:
-        st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
-        col_h, col_d = st.columns(2)
-        with col_h:
-            if st.button("📚  Ver historial", use_container_width=True):
-                st.session_state.fase = "historial"
-                st.rerun()
-        with col_d:
-            if st.button("📊  Dashboard", use_container_width=True):
-                st.session_state.fase = "dashboard"
-                st.rerun()
+    st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
+    col_h, col_d = st.columns(2)
+    with col_h:
+        if st.button("📚  Ver historial", use_container_width=True):
+            st.session_state.fase = "historial"
+            st.rerun()
+    with col_d:
+        if st.button("📊  Dashboard", use_container_width=True):
+            st.session_state.fase = "dashboard"
+            st.rerun()
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "dashboard":
