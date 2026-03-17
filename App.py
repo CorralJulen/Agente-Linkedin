@@ -953,100 +953,83 @@ elif st.session_state.fase == "dashboard":
         render_dashboard()
         
     with tab_linkedin:
-        import plotly.express as px # Importación necesaria para los gráficos
+        import plotly.express as px
         
         st.markdown('<div class="section-label">Sube tus datos reales</div>', unsafe_allow_html=True)
-        st.write("Sube el Excel de LinkedIn para visualizar tu audiencia con gráficos interactivos.")
         
+        # Inicializar memoria para que los datos no se borren al tocar botones
+        if 'datos_li_guardados' not in st.session_state:
+            st.session_state.datos_li_guardados = None
+
         archivo_subido = st.file_uploader("Arrastra tu Excel de LinkedIn", type=["xlsx"])
         
         if archivo_subido is not None:
             try:
-                # Lectura de hojas
                 df_rendimiento = pd.read_excel(archivo_subido, sheet_name=0, header=None)
                 df_detallada = pd.read_excel(archivo_subido, sheet_name=1)
                 
-                # Normalización
                 df_detallada.columns = [str(c).strip().lower() for c in df_detallada.columns]
-                col_cat = df_detallada.columns[0]
-                col_val = df_detallada.columns[1]
-                col_pct = df_detallada.columns[2]
+                col_cat, col_val, col_pct = df_detallada.columns[0], df_detallada.columns[1], df_detallada.columns[2]
+                df_detallada[col_pct] = (pd.to_numeric(df_detallada[col_pct], errors='coerce') * 100).round(1)
 
-                # Limpieza de porcentajes (quita decimales infinitos)
-                df_detallada[col_pct] = (df_detallada[col_pct] * 100).round(1)
-
-                def get_val(df, label):
+                def get_val_num(df, label):
                     try:
                         fila = df[df[0].astype(str).str.contains(label, case=False, na=False)]
-                        return fila.iloc[0, 1]
+                        val = fila.iloc[0, 1]
+                        return int(pd.to_numeric(val, errors='coerce'))
                     except: return 0
 
-                impresiones = get_val(df_rendimiento, "Impresiones")
-                alcance = get_val(df_rendimiento, "Miembros alcanzados")
-                clics = get_val(df_rendimiento, "Visitas a los enlaces")
-                perfil_v = get_val(df_rendimiento, "Visualizaciones del perfil")
-
-                st.markdown("### 📊 Métricas de impacto")
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Impresiones", f"{impresiones:,}")
-                c2.metric("Alcance", f"{alcance:,}")
-                c3.metric("Clics Web", clics)
-                c4.metric("Visitas Perfil", perfil_v)
-
-                st.markdown('<div class="section-label">👥 Análisis de Audiencia</div>', unsafe_allow_html=True)
-                
-                # ── Gráfico de Sectores (Barras Horizontales) ──
-                st.write("**Top Sectores que te leen:**")
-                sectores_df = df_detallada[df_detallada[col_cat].astype(str).str.contains("Sector", case=False, na=False)].head(5)
-                
-                fig_sectores = px.bar(
-                    sectores_df, 
-                    x=col_pct, 
-                    y=col_val, 
-                    orientation='h',
-                    text=[f"{v}%" for v in sectores_df[col_pct]],
-                    color_discrete_sequence=['#6c63ff']
-                )
-                fig_sectores.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    font_color="#f0f0f8", margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis_title="Porcentaje (%)", yaxis_title=None, height=300
-                )
-                st.plotly_chart(fig_sectores, use_container_width=True, config={'displayModeBar': False})
-
-                # ── Gráfico de Ubicación (Donut) ──
-                st.write("**Distribución por Ciudad:**")
-                ciudades_df = df_detallada[df_detallada[col_cat].astype(str).str.contains("Ubicación|Ubicacion", case=False, na=False)].head(5)
-                
-                fig_ciudades = px.pie(
-                    ciudades_df, 
-                    values=col_pct, 
-                    names=col_val, 
-                    hole=0.6,
-                    color_discrete_sequence=px.colors.sequential.RdBu
-                )
-                fig_ciudades.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    font_color="#f0f0f8", margin=dict(l=10, r=10, t=10, b=10),
-                    height=300, showlegend=True
-                )
-                st.plotly_chart(fig_ciudades, use_container_width=True, config={'displayModeBar': False})
-
-                # Sugerencia de estrategia
-                st.markdown('<div class="section-label">💡 Estrategia Recomendada</div>', unsafe_allow_html=True)
-                with st.spinner("Generando análisis..."):
-                    contexto_audiencia = {
-                        "sectores": sectores_df[col_val].tolist(),
-                        "ciudades": ciudades_df[col_val].tolist(),
-                        "impresiones": impresiones
-                    }
-                    estrategia = sugerir_estrategia_proximo_post(contexto_audiencia)
-                    st.success(estrategia)
-
+                # Guardamos todo en el session_state
+                st.session_state.datos_li_guardados = {
+                    "impresiones": get_val_num(df_rendimiento, "Impresiones"),
+                    "alcance": get_val_num(df_rendimiento, "Miembros alcanzados"),
+                    "clics": get_val_num(df_rendimiento, "Visitas a los enlaces"),
+                    "perfil_v": get_val_num(df_rendimiento, "Visualizaciones del perfil"),
+                    "df_sectores": df_detallada[df_detallada[col_cat].astype(str).str.contains("Sector", case=False, na=False)].head(5),
+                    "df_ciudades": df_detallada[df_detallada[col_cat].astype(str).str.contains("Ubicación|Ubicacion", case=False, na=False)].head(5)
+                }
             except Exception as e:
-                st.error(f"Error técnico al generar gráficos: {str(e)}")
+                st.error(f"Error al procesar el archivo: {e}")
+
+        # Si hay datos en memoria (recién subidos o de antes), los pintamos
+        if st.session_state.datos_li_guardados:
+            d = st.session_state.datos_li_guardados
+            
+            st.markdown("### 📊 Métricas de impacto")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Impresiones", f"{d['impresiones']:,}".replace(",", "."))
+            c2.metric("Alcance", f"{d['alcance']:,}".replace(",", "."))
+            c3.metric("Clics Web", d['clics'])
+            c4.metric("Visitas Perfil", d['perfil_v'])
+
+            st.markdown('<div class="section-label">👥 Análisis de Audiencia</div>', unsafe_allow_html=True)
+            
+            # Gráfico de Barras - Sectores
+            fig_sec = px.bar(d['df_sectores'], x=col_pct, y=col_val, orientation='h',
+                             text=[f"{v}%" for v in d['df_sectores'][col_pct]],
+                             color_discrete_sequence=['#6c63ff'], labels={col_pct: 'Portcentaje %', col_val: ''})
+            fig_sec.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#f0f0f8", height=300, margin=dict(l=0, r=0, t=20, b=0))
+            st.write("**¿De qué sectores son tus lectores?**")
+            st.plotly_chart(fig_sec, use_container_width=True, config={'displayModeBar': False})
+
+            # Gráfico Donut - Ciudades
+            fig_ciu = px.pie(d['df_ciudades'], values=col_pct, names=col_val, hole=0.6,
+                             color_discrete_sequence=px.colors.sequential.Purples_r)
+            fig_ciu.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#f0f0f8", height=350, margin=dict(t=30, b=0))
+            st.write("**¿Desde dónde te ven?**")
+            st.plotly_chart(fig_ciu, use_container_width=True)
+
+            # Estrategia IA
+            st.markdown('<div class="section-label">💡 Próxima Estrategia</div>', unsafe_allow_html=True)
+            with st.spinner("Gemini analizando..."):
+                ctx = {"sectores": d['df_sectores'][col_val].tolist(), "ciudades": d['df_ciudades'][col_val].tolist(), "impresiones": d['impresiones']}
+                st.success(sugerir_estrategia_proximo_post(ctx))
+            
+            if st.button("🗑️ Borrar datos y subir nuevo"):
+                st.session_state.datos_li_guardados = None
+                st.rerun()
         else:
-            st.info("👆 Sube tu Excel para transformar los datos en gráficos.")
+            st.info("👆 Sube tu archivo Excel para ver los gráficos interactivos.")
 
 # ── COMPETENCIA ────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "competencia":
