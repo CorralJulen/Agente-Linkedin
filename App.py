@@ -410,6 +410,14 @@ Devuelve SOLO JSON válido sin markdown:
     raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
+def sugerir_estrategia_proximo_post(datos_audiencia):
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    prompt = f"""Basado en estos datos reales de audiencia de LinkedIn: {datos_audiencia}
+Analiza qué perfiles están leyendo el contenido y sugiere UNA estrategia clara para el PRÓXIMO post.
+Dime: qué tema tocar, qué tono usar y a qué sector específico atacar para crecer.
+Responde de forma concisa (máx 60 palabras)."""
+    return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+
 # ── Carrusel PDF vertical (formato LinkedIn 1080x1350) ────────────────────────
 def crear_carrusel_pdf(contenido: dict) -> bytes:
     from reportlab.pdfgen import canvas as rl_canvas
@@ -505,13 +513,11 @@ def crear_carrusel_pdf(contenido: dict) -> bytes:
         MARGIN_BOTTOM = 24
 
         if dato:
-            # Texto arriba, caja dato abajo — layout vertical
             cuerpo_lines = wrap(c, cuerpo, "Helvetica", 13, W - 28)
             c.setFillColor(TXT); y = H - 76
             for line in cuerpo_lines[:5]:
                 c.setFont("Helvetica", 13); c.drawString(14, y, line); y -= 20
 
-            # Caja dato ocupa zona inferior
             bh = 160; by = MARGIN_BOTTOM; bx = 14; bw2 = W - 28
             c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 8, fill=1, stroke=0)
             c.setStrokeColor(PUR); c.setLineWidth(1)
@@ -526,7 +532,6 @@ def crear_carrusel_pdf(contenido: dict) -> bytes:
                 dw = c.stringWidth(dl, "Helvetica-Bold", 16)
                 c.drawString(bx + (bw2 - dw)/2, dy, dl); dy -= 24
         else:
-            # Caja texto ocupa toda la zona disponible
             box_top = H - 64; box_bot = MARGIN_BOTTOM
             box_h = box_top - box_bot; bx = 12; bw2 = W - 24
             c.setFillColor(colors.HexColor("#0e0e22"))
@@ -752,7 +757,6 @@ def render_analisis_competencia(data):
     </div>""", unsafe_allow_html=True)
 
 def render_dashboard():
-    """Dashboard de estadísticas de rendimiento."""
     historial = st.session_state.get("historial", [])
     if not historial:
         st.markdown("<div style='text-align:center;color:#7070a0;font-size:13px;padding:3rem 0'>Aún no hay datos.<br>¡Publica tu primer post para ver estadísticas!</div>", unsafe_allow_html=True)
@@ -762,7 +766,6 @@ def render_dashboard():
     _, semanas_cons = calcular_racha()
     ahora = datetime.now()
 
-    # Racha máxima histórica
     semanas_set = set()
     for h in historial:
         d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
@@ -778,7 +781,6 @@ def render_dashboard():
         else:
             racha_actual = 0
 
-    # Posts por semana (últimas 8 semanas)
     semanas_labels = []
     semanas_counts = []
     for i in range(7, -1, -1):
@@ -790,19 +792,16 @@ def render_dashboard():
         semanas_labels.append(f"S{iso[1]}")
         semanas_counts.append(count)
 
-    # Sectores
     sector_counts = {}
     for h in historial:
         s = h.get("sector","Otro")
         sector_counts[s] = sector_counts.get(s, 0) + 1
 
-    # Tonos
     tono_counts = {}
     for h in historial:
         t = h.get("tono","Otro")
         tono_counts[t] = tono_counts.get(t, 0) + 1
 
-    # ── Métricas clave ──────────────────────────────────────────────────────────
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">{total}</div><div class="dash-metric-label">posts totales</div></div>', unsafe_allow_html=True)
@@ -811,7 +810,6 @@ def render_dashboard():
     with col3:
         st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">⭐ {racha_max}</div><div class="dash-metric-label">racha máxima</div></div>', unsafe_allow_html=True)
 
-    # ── Gráfico de barras semanal ───────────────────────────────────────────────
     st.markdown('<div class="section-label">📈 Posts por semana (últimas 8 semanas)</div>', unsafe_allow_html=True)
     max_count = max(semanas_counts) if max(semanas_counts) > 0 else 1
     bars_html = '<div style="display:flex;gap:8px;align-items:flex-end;height:100px;margin-bottom:8px">'
@@ -828,7 +826,6 @@ def render_dashboard():
     bars_html += '</div>'
     st.markdown(bars_html, unsafe_allow_html=True)
 
-    # ── Sectores ───────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">🏷️ Sectores más publicados</div>', unsafe_allow_html=True)
     sector_colors = {"🏦 Banca": "#3b82f6", "♟️ Estrategia & IA": "#a855f7", "📊 Analista de Datos": "#14b8a6"}
     sector_html = ""
@@ -842,7 +839,6 @@ def render_dashboard():
         </div>'''
     st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem 1.2rem">{sector_html}</div>', unsafe_allow_html=True)
 
-    # ── Tonos ──────────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">🎭 Tonos utilizados</div>', unsafe_allow_html=True)
     tono_colors = {"🎓 Estoy aprendiendo": "#fbbf24", "💼 Quiero parecer senior": "#6c63ff", "🔥 Quiero generar debate": "#f87171"}
     tono_html = ""
@@ -856,24 +852,15 @@ def render_dashboard():
         </div>'''
     st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem 1.2rem">{tono_html}</div>', unsafe_allow_html=True)
 
-    # ── Último post ────────────────────────────────────────────────────────────
-    if historial:
-        ultimo = historial[0]
-        st.markdown('<div class="section-label">🕐 Último post publicado</div>', unsafe_allow_html=True)
-        pill_map = {"🏦 Banca":"sector-pill-banca","♟️ Estrategia & IA":"sector-pill-estrategia","📊 Analista de Datos":"sector-pill-datos"}
-        pill = pill_map.get(ultimo["sector"],"source-pill")
-        st.markdown(f'<div class="historial-item"><div class="historial-meta"><span class="{pill}">{ultimo["sector"]}</span><span class="source-pill">{ultimo.get("tono","")}</span><span class="historial-fecha">🗓 {ultimo["fecha"]}</span></div><div class="card-title" style="font-size:13px;margin-bottom:4px">{ultimo["titulo"]}</div></div>', unsafe_allow_html=True)
-
 # ── UI ─────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="main-header">
-    <div class="badge">⚡ LinkedIn Agent</div>
+    <div class="badge">⚡ Agente LinK</div>
     <div class="main-title">Tu voz<br>en el sector</div>
     <div class="main-sub">Noticias españolas de los últimos 5 días · Analizadas con IA<br>Elige una y publica en LinkedIn</div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Init session_state — carga desde Supabase en primer arranque ───────────────
 for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("usadas",[]),("fase","inicio"),("puntuacion",None),
                   ("sector_elegido",""),("sectores_data",{}),
@@ -885,7 +872,6 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
     if key not in st.session_state:
         st.session_state[key] = val
 
-# Carga inicial desde Supabase (solo una vez por sesión)
 if not st.session_state.sb_cargado:
     historial_sb = sb_cargar_historial()
     st.session_state.historial = historial_sb if historial_sb else []
@@ -909,23 +895,18 @@ if st.session_state.fase == "inicio":
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("⚡  Buscar noticias", use_container_width=True, type="primary"):
-            with st.spinner("Buscando noticias españolas de los últimos 5 días..."):
+            with st.spinner("Buscando noticias españolas..."):
                 sectores_data = fetch_noticias_por_sector()
                 noticias = []
                 for sector, noticia in sectores_data.items():
                     if noticia and noticia["url"] not in st.session_state.usadas:
                         noticia["_sector"] = sector
                         noticias.append(noticia)
-                if not noticias:
-                    st.error("No se encontraron noticias nuevas. Prueba más tarde.")
+                if not noticias: st.error("Sin noticias nuevas.")
                 else:
                     st.session_state.noticias = noticias
-                    st.session_state.sectores_data = sectores_data
                     st.session_state.fase = "noticias"
                     st.rerun()
-
-    if st.session_state.usadas:
-        st.markdown(f"<div style='text-align:center;color:#7070a0;font-size:12px;margin-top:8px'>{len(st.session_state.usadas)} noticia{'s' if len(st.session_state.usadas)>1 else ''} ya usada{'s' if len(st.session_state.usadas)>1 else ''} — no se repetirán</div>", unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
     if st.button("🔍  Ver qué publica la competencia", use_container_width=True):
@@ -964,23 +945,61 @@ elif st.session_state.fase == "dashboard":
         
     with tab_linkedin:
         st.markdown('<div class="section-label">Sube tus datos reales</div>', unsafe_allow_html=True)
-        st.write("Sube el archivo de métricas que descargas desde tu perfil de LinkedIn para cruzar los datos y visualizar tu impacto.")
+        st.write("Sube el Excel de LinkedIn para ver quién lee tus posts y cómo funcionan.")
         
-        archivo_subido = st.file_uploader("Arrastra tu archivo Excel o CSV de LinkedIn", type=["xls", "xlsx", "csv"])
+        archivo_subido = st.file_uploader("Arrastra tu Excel de LinkedIn", type=["xlsx"])
         
         if archivo_subido is not None:
             try:
-                if archivo_subido.name.endswith('.csv'):
-                    df = pd.read_csv(archivo_subido)
-                else:
-                    df = pd.read_excel(archivo_subido)
+                df_rendimiento = pd.read_excel(archivo_subido, sheet_name=0, header=None)
+                df_detallada = pd.read_excel(archivo_subido, sheet_name=1)
                 
-                st.markdown('<div class="section-label">Vista previa de los datos</div>', unsafe_allow_html=True)
-                st.dataframe(df.head())
+                def get_val(df, label):
+                    res = df[df[0] == label][1]
+                    return res.values[0] if not res.empty else 0
+
+                impresiones = get_val(df_rendimiento, "Impresiones")
+                alcance = get_val(df_rendimiento, "Miembros alcanzados")
+                clics = get_val(df_rendimiento, "Visitas a los enlaces de esta publicación")
+                perfil_v = get_val(df_rendimiento, "Visualizaciones del perfil desde esta publicación")
+
+                st.markdown("### 📊 Métricas de impacto")
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Impresiones", impresiones)
+                c2.metric("Alcance", alcance)
+                c3.metric("Clics Web", clics)
+                c4.metric("Visitas Perfil", perfil_v)
+
+                st.markdown('<div class="section-label">👥 Audiencia Detallada</div>', unsafe_allow_html=True)
+                col_info1, col_info2 = st.columns(2)
+                
+                with col_info1:
+                    st.write("**Top Sectores:**")
+                    sectores = df_detallada[df_detallada['Categoría'] == 'Sector'][['Valor', '%']].head(3)
+                    for _, row in sectores.iterrows():
+                        st.markdown(f"- {row['Valor']} ({row['%']})")
+
+                with col_info2:
+                    st.write("**Ubicación:**")
+                    ciudades = df_detallada[df_detallada['Categoría'] == 'Ubicación'][['Valor', '%']].head(3)
+                    for _, row in ciudades.iterrows():
+                        st.markdown(f"- {row['Valor']} ({row['%']})")
+
+                # Sugerencia de estrategia basada en datos
+                st.markdown('<div class="section-label">💡 Próxima Estrategia Recomendada</div>', unsafe_allow_html=True)
+                with st.spinner("Analizando tu audiencia para sugerir cambios..."):
+                    contexto_audiencia = {
+                        "sectores": sectores['Valor'].tolist(),
+                        "ciudades": ciudades['Valor'].tolist(),
+                        "impresiones": impresiones
+                    }
+                    estrategia = sugerir_estrategia_proximo_post(contexto_audiencia)
+                    st.success(estrategia)
+
             except Exception as e:
-                st.error(f"Hubo un error al leer el archivo: {e}")
+                st.error(f"Error al procesar el Excel. Asegúrate de subir el archivo descargado de LinkedIn.")
         else:
-            st.info("👆 Sube tu archivo para que podamos leer las columnas y generar los gráficos automáticos.")
+            st.info("👆 Sube tu Excel para cruzar los datos de rendimiento con los de audiencia.")
 
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
@@ -1000,14 +1019,13 @@ elif st.session_state.fase == "competencia":
     pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos"}
     for sector_key, cfg in SECTORES.items():
         if st.button(cfg["etiqueta"], key=f"comp_{sector_key}", use_container_width=True):
-            with st.spinner(f"Analizando contenido de {cfg['etiqueta']}..."):
+            with st.spinner("Analizando..."):
                 try:
                     data = analizar_competencia(sector_key)
                     st.session_state.competencia_data = data
                     st.session_state.competencia_sector = sector_key
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Error: {e}")
     if st.session_state.competencia_data:
         sector_key = st.session_state.competencia_sector
         cfg = SECTORES.get(sector_key, {})
@@ -1022,14 +1040,7 @@ elif st.session_state.fase == "competencia":
 
 # ── HISTORIAL ──────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "historial":
-    st.markdown("""
-    <div class="post-header">
-        <div class="post-icon">📚</div>
-        <div>
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Historial de posts</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">Guardado en la nube · Persiste entre sesiones</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="post-header"><div class="post-icon">📚</div><div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Historial de posts</div><div style="font-size:12px;color:#7070a0;margin-top:2px">Guardado en Supabase</div></div></div>""", unsafe_allow_html=True)
     render_historial()
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
@@ -1052,21 +1063,11 @@ elif st.session_state.fase == "noticias":
             <div class="card-title">{n['titulo']}</div>
             <div class="card-desc">{resumen_limpio}</div>
         </div>""", unsafe_allow_html=True)
-        col_sel, col_ref = st.columns([3,1])
-        with col_sel:
-            if st.button("✦  Seleccionar esta noticia", key=f"sel_{i}", use_container_width=True):
-                st.session_state.noticia_elegida = n
-                st.session_state.sector_elegido = sector
-                st.session_state.fase = "elegir_tono"
-                st.rerun()
-        with col_ref:
-            if st.button("↺ Cambiar", key=f"ref_{i}", use_container_width=True):
-                with st.spinner("Buscando otra noticia..."):
-                    urls_actuales = [x.get("url","") for x in st.session_state.noticias]
-                    nueva = parsear_un_feed(sector, urls_actuales + st.session_state.usadas)
-                    if nueva: st.session_state.noticias[i] = nueva
-                    st.rerun()
-        st.markdown("<div style='margin-bottom:0.8rem'></div>", unsafe_allow_html=True)
+        if st.button("✦  Seleccionar esta noticia", key=f"sel_{i}", use_container_width=True):
+            st.session_state.noticia_elegida = n
+            st.session_state.sector_elegido = sector
+            st.session_state.fase = "elegir_tono"
+            st.rerun()
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver"):
         st.session_state.fase = "inicio"
@@ -1078,223 +1079,52 @@ elif st.session_state.fase == "elegir_tono":
     n = st.session_state.noticia_elegida
     sector = st.session_state.sector_elegido
     cfg = SECTORES.get(sector,{})
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos"}
-    pill = pill_class.get(sector,"source-pill")
-    st.markdown("""
-    <div class="post-header">
-        <div class="post-icon">🎯</div>
-        <div>
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">¿Qué quieres transmitir hoy?</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">El tono define cómo te percibirá tu audiencia</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
-    st.markdown(f'<div style="display:flex;gap:8px;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap"><span class="{pill}">{cfg.get("etiqueta","")}</span><span class="source-pill">{n["fuente"]}</span><span class="date-pill">🗓 {n["fecha"]}</span></div><div class="card-title" style="margin-bottom:1.5rem">{n["titulo"]}</div>', unsafe_allow_html=True)
+    st.markdown("""<div class="post-header"><div class="post-icon">🎯</div><div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Tono del post</div></div></div>""", unsafe_allow_html=True)
     for tono_key, tono_cfg in TONOS.items():
         if st.button(tono_cfg["label"], key=f"tono_{tono_key}", use_container_width=True):
-            perfil = cfg.get("perfil","consultor junior")
             st.session_state.tono_elegido = tono_key
-            with st.spinner("Gemini está generando 2 versiones del post..."):
-                post_a, post_b, recomendada, razon = generar_dos_posts(n, perfil, tono_key)
-                st.session_state.post_a = post_a
-                st.session_state.post_b = post_b
-                st.session_state.recomendada = recomendada
-                st.session_state.razon = razon
-                st.session_state.puntuacion = None
-                st.session_state.post_en = ""
-                st.session_state.carrusel_pdf = None
+            with st.spinner("Generando versiones..."):
+                post_a, post_b, recomendada, razon = generar_dos_posts(n, cfg.get("perfil","consultor"), tono_key)
+                st.session_state.post_a, st.session_state.post_b = post_a, post_b
+                st.session_state.recomendada, st.session_state.razon = recomendada, razon
                 st.session_state.usadas.append(n["url"])
                 st.session_state.fase = "elegir_post"
                 st.rerun()
-    st.markdown("<hr>", unsafe_allow_html=True)
-    if st.button("← Volver a noticias"):
-        st.session_state.fase = "noticias"
-        st.rerun()
 
 # ── ELEGIR POST ────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "elegir_post":
-    tono_label = TONOS.get(st.session_state.tono_elegido,{}).get("label","")
-    st.markdown(f"""
-    <div class="post-header">
-        <div class="post-icon">✦</div>
-        <div>
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Elige tu versión</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">Tono: {tono_label} · La versión en verde es la recomendada</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
-    rec = st.session_state.recomendada
-    razon = st.session_state.razon
-    render_opcion(st.session_state.post_a,"Versión A — Analítica y técnica",(rec=="A"),razon if rec=="A" else "","elegir_a")
-    st.markdown("<div style='margin-bottom:1.5rem'></div>", unsafe_allow_html=True)
-    render_opcion(st.session_state.post_b,"Versión B — Cercana y reflexiva",(rec=="B"),razon if rec=="B" else "","elegir_b")
-    st.markdown("<hr>", unsafe_allow_html=True)
-    if st.button("← Volver a noticias"):
-        st.session_state.fase = "noticias"
-        st.rerun()
+    render_opcion(st.session_state.post_a,"Versión A — Analítica",(st.session_state.recomendada=="A"),st.session_state.razon if st.session_state.recomendada=="A" else "","elegir_a")
+    st.markdown("<br>", unsafe_allow_html=True)
+    render_opcion(st.session_state.post_b,"Versión B — Reflexiva",(st.session_state.recomendada=="B"),st.session_state.razon if st.session_state.recomendada=="B" else "","elegir_b")
 
-# ── POST ───────────────────────────────────────────────────────────────────────
+# ── POST FINAL ─────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "post":
     n = st.session_state.noticia_elegida
-    sector = st.session_state.sector_elegido
-    cfg = SECTORES.get(sector,{})
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos"}
-    pill = pill_class.get(sector,"source-pill")
-    etiqueta = cfg.get("etiqueta","")
-    tono_label = TONOS.get(st.session_state.tono_elegido,{}).get("label","")
-
-    st.markdown("""
-    <div class="post-header">
-        <div class="post-icon">✦</div>
-        <div>
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Post listo</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">Revisa, edita y publica en LinkedIn</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
-        <span class="{pill}">{etiqueta}</span>
-        <span class="source-pill">{tono_label}</span>
-        <span class="source-pill">{n['fuente']}</span>
-        <span class="date-pill">🗓 {n['fecha']}</span>
-        <a href="{n['url']}" target="_blank" style="font-size:11px;color:#6c63ff;text-decoration:none">Ver noticia original ↗</a>
-    </div>""", unsafe_allow_html=True)
-
+    st.markdown(f'<div class="card-title">{n["titulo"]}</div>', unsafe_allow_html=True)
     render_imagen_noticia(n)
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["✏️ Editar", "🎨 Carrusel PDF", "🌍 Inglés", "👁️ Vista previa", "📊 Puntuación"])
-
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["✏️ Editar", "🎨 Carrusel PDF", "🌍 Inglés", "👁️ Vista", "📊 Score"])
     with tab1:
-        post_editado = st.text_area(label="", value=st.session_state.post_generado,
-            height=320, label_visibility="collapsed", key=f"editor_{st.session_state.edicion_key}")
-        if post_editado != st.session_state.post_generado:
-            st.session_state.post_generado = post_editado
-        st.markdown('<div class="edicion-guiada-label">✨ Edición guiada</div>', unsafe_allow_html=True)
-        col_e1, col_e2, col_e3 = st.columns(3)
-        with col_e1:
-            if st.button("✂️ Más corto", use_container_width=True, key="ed_corto"):
-                with st.spinner("Condensando..."):
-                    st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Reduce a máximo 150 palabras. Conserva mejores insights y pregunta final.")
-                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
-        with col_e2:
-            if st.button("🎣 Nuevo gancho", use_container_width=True, key="ed_gancho"):
-                with st.spinner("Reescribiendo gancho..."):
-                    st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Reescribe SOLO las primeras 1-2 líneas con un gancho más impactante. El resto igual.")
-                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
-        with col_e3:
-            if st.button("📊 Añade dato", use_container_width=True, key="ed_dato"):
-                with st.spinner("Añadiendo dato..."):
-                    st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Incorpora un dato, cifra o estadística concreta. Si no hay, invéntalo de forma verosímil.")
-                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
-
+        st.session_state.post_generado = st.text_area("Post", st.session_state.post_generado, height=300)
     with tab2:
-        st.markdown('<div class="section-label">🎨 Carrusel PDF para LinkedIn</div>', unsafe_allow_html=True)
-        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:1rem">Genera un PDF vertical listo para subir directamente a LinkedIn como carrusel</div>', unsafe_allow_html=True)
-        if not st.session_state.carrusel_pdf:
-            if st.button("🎨  Generar carrusel PDF", use_container_width=True, key="gen_carrusel"):
-                with st.spinner("Gemini estructurando el carrusel..."):
-                    try:
-                        contenido = generar_contenido_carrusel(st.session_state.post_generado, n, sector)
-                        with st.spinner("Generando el PDF..."):
-                            pdf_bytes = crear_carrusel_pdf(contenido)
-                            st.session_state.carrusel_pdf = pdf_bytes
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"Error generando carrusel: {e}")
-        else:
-            st.success("✅ Carrusel PDF generado correctamente")
-            titulo_archivo = re.sub(r'[^a-z0-9]+', '_', n.get("titulo","carrusel").lower())[:30]
-            st.download_button(
-                label="⬇️  Descargar carrusel.pdf",
-                data=st.session_state.carrusel_pdf,
-                file_name=f"carrusel_{titulo_archivo}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-            st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px">💡 Descarga el PDF y súbelo directamente a LinkedIn como documento — aparecerá como carrusel</div>', unsafe_allow_html=True)
-            if st.button("🔄  Regenerar carrusel", use_container_width=False, key="regen_carrusel"):
-                st.session_state.carrusel_pdf = None
-                st.rerun()
-
+        if st.button("Generar Carrusel PDF"):
+            contenido = generar_contenido_carrusel(st.session_state.post_generado, n, st.session_state.sector_elegido)
+            st.session_state.carrusel_pdf = crear_carrusel_pdf(contenido)
+        if st.session_state.carrusel_pdf:
+            st.download_button("Descargar PDF", st.session_state.carrusel_pdf, "carrusel.pdf", "application/pdf")
     with tab3:
-        st.markdown('<div class="section-label">Versión adaptada al inglés</div>', unsafe_allow_html=True)
-        if not st.session_state.post_en:
-            if st.button("🌍  Generar versión en inglés", use_container_width=True, key="gen_en"):
-                with st.spinner("Adaptando al inglés..."):
-                    st.session_state.post_en = traducir_post_ingles(st.session_state.post_generado)
-                    st.rerun()
-        else:
-            post_en_editado = st.text_area(label="", value=st.session_state.post_en,
-                height=320, label_visibility="collapsed", key="editor_en")
-            st.session_state.post_en = post_en_editado
-            col_en1, col_en2 = st.columns(2)
-            with col_en1:
-                if st.button("📋  Copiar en inglés", use_container_width=True, key="copy_en"):
-                    st.code(st.session_state.post_en, language=None)
-                    st.success("Copia el texto de arriba ↑")
-            with col_en2:
-                if st.button("📨  Telegram (inglés)", use_container_width=True, key="tg_en"):
-                    with st.spinner("Enviando..."):
-                        ok = enviar_telegram(st.session_state.post_en, n)
-                        st.success("✅ Enviado." if ok else "❌ Error.")
-            if st.button("🔄  Regenerar en inglés", use_container_width=False, key="regen_en"):
-                st.session_state.post_en = ""
-                st.rerun()
-
-    with tab4:
-        st.markdown('<div class="section-label">Así se verá en LinkedIn</div>', unsafe_allow_html=True)
-        render_linkedin_preview(st.session_state.post_generado)
-
+        if st.button("Traducir a Inglés"):
+            st.code(traducir_post_ingles(st.session_state.post_generado))
+    with tab4: render_linkedin_preview(st.session_state.post_generado)
     with tab5:
-        if st.session_state.puntuacion is None:
-            if st.button("📊  Analizar y puntuar post", use_container_width=True):
-                with st.spinner("Gemini está analizando tu post..."):
-                    try:
-                        st.session_state.puntuacion = puntuar_post(st.session_state.post_generado)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error al puntuar: {e}")
-        else:
-            render_puntuacion(st.session_state.puntuacion)
-            if st.button("🔄  Volver a puntuar"):
-                st.session_state.puntuacion = None
-                st.rerun()
-
-    st.markdown("<hr>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📋  Copiar post", use_container_width=True):
-            st.code(st.session_state.post_generado, language=None)
-            st.success("Copia el texto de arriba ↑")
-    with col2:
-        if st.button("📨  Enviar a Telegram", use_container_width=True, type="primary"):
-            with st.spinner("Enviando..."):
-                ok = enviar_telegram(st.session_state.post_generado, n)
-                if ok:
-                    guardar_en_historial(st.session_state.post_generado, n, sector, st.session_state.tono_elegido)
-                    st.success("✅ Enviado a Telegram y guardado en historial.")
-                else:
-                    st.error("❌ Error al enviar.")
-
-    st.markdown("<hr>", unsafe_allow_html=True)
-    col3, col4 = st.columns(2)
-    with col3:
-        if st.button("🔄  Regenerar post", use_container_width=True):
-            perfil = cfg.get("perfil","consultor junior")
-            with st.spinner("Regenerando con Gemini..."):
-                st.session_state.post_generado = generar_post(n, perfil, st.session_state.tono_elegido)
-                st.session_state.puntuacion = None
-                st.session_state.post_en = ""
-                st.session_state.carrusel_pdf = None
-                st.session_state.edicion_key += 1
-                st.rerun()
-    with col4:
-        if st.button("← Buscar más noticias", use_container_width=True):
+        if st.button("Puntuar"): render_puntuacion(puntuar_post(st.session_state.post_generado))
+    
+    col_enviar, col_inicio = st.columns(2)
+    with col_enviar:
+        if st.button("📨 Enviar a Telegram", type="primary", use_container_width=True):
+            if enviar_telegram(st.session_state.post_generado, n):
+                guardar_en_historial(st.session_state.post_generado, n, st.session_state.sector_elegido, st.session_state.tono_elegido)
+                st.success("¡Enviado!")
+    with col_inicio:
+        if st.button("🏠 Inicio", use_container_width=True):
             st.session_state.fase = "inicio"
-            st.session_state.noticias = []
-            st.session_state.post_generado = ""
-            st.session_state.noticia_elegida = None
-            st.session_state.puntuacion = None
-            st.session_state.sector_elegido = ""
-            st.session_state.post_en = ""
-            st.session_state.carrusel_pdf = None
             st.rerun()
