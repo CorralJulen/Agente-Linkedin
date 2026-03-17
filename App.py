@@ -11,6 +11,8 @@ from google import genai
 GEMINI_API_KEY   = st.secrets.get("GEMINI_API_KEY")
 TELEGRAM_TOKEN   = st.secrets.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
+SUPABASE_URL     = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY     = st.secrets.get("SUPABASE_ANON_KEY", "")
 
 RSS_BANCA = [
     ("El Economista - Banca",   "https://www.eleconomista.es/rss/rss-banca.php"),
@@ -46,7 +48,6 @@ TONOS = {
     "senior":      {"label": "💼 Quiero parecer senior", "instruccion": "Escribe con tono experto y seguro. Analiza con criterio profesional, usa terminología del sector con naturalidad."},
     "debate":      {"label": "🔥 Quiero generar debate",  "instruccion": "Escribe con una opinión fuerte y provocadora. Toma partido, cuestiona el status quo, invita a la discusión."},
 }
-
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 # ── Página ─────────────────────────────────────────────────────────────────────
@@ -118,12 +119,81 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .score-feedback { font-size: 12px; color: rgba(240,240,248,0.7); line-height: 1.65; padding: 0.8rem 1rem; background: rgba(255,255,255,0.03); border-radius: 10px; border-left: 2px solid #6c63ff; margin-top: 1rem; }
 .post-header { display: flex; align-items: center; gap: 14px; margin-bottom: 1.2rem; }
 .post-icon { width: 46px; height: 46px; background: linear-gradient(135deg, #6c63ff, #9333ea); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.dash-metric { background: #13131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 10px; }
+.dash-metric-num { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: #f0f0f8; }
+.dash-metric-label { font-size: 12px; color: #7070a0; margin-top: 2px; }
+.dash-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.dash-bar-label { font-size: 12px; color: #d0d0e0; width: 130px; flex-shrink: 0; }
+.dash-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+.dash-bar-fill { height: 100%; border-radius: 99px; }
+.dash-bar-val { font-size: 12px; color: #7070a0; width: 24px; text-align: right; }
 .stButton > button { font-family: 'Syne', sans-serif !important; font-weight: 700 !important; border-radius: 14px !important; border: none !important; transition: all 0.2s !important; background: linear-gradient(135deg, #e03131, #c92a2a) !important; color: white !important; box-shadow: 0 4px 18px rgba(224,49,49,0.35) !important; }
 .stButton > button:hover { background: linear-gradient(135deg, #c92a2a, #b02020) !important; }
 hr { border-color: rgba(255,255,255,0.07) !important; margin: 1.5rem 0 !important; }
 #MainMenu, footer, header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Supabase helpers ───────────────────────────────────────────────────────────
+
+def _sb_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+def sb_cargar_historial():
+    """Carga el historial desde Supabase ordenado por fecha desc."""
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/linkedin_historial?order=id.desc&limit=200",
+            headers=_sb_headers(), timeout=10
+        )
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return []
+
+def sb_guardar_post(entrada: dict):
+    """Inserta un post en Supabase."""
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/linkedin_historial",
+            headers=_sb_headers(),
+            json=entrada, timeout=10
+        )
+    except Exception:
+        pass
+
+def sb_cargar_config(clave: str, default):
+    """Lee un valor de linkedin_config."""
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/linkedin_config?clave=eq.{clave}&limit=1",
+            headers=_sb_headers(), timeout=10
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if data:
+                return json.loads(data[0]["valor"])
+    except Exception:
+        pass
+    return default
+
+def sb_guardar_config(clave: str, valor):
+    """Upsert en linkedin_config."""
+    try:
+        headers = {**_sb_headers(), "Prefer": "resolution=merge-duplicates"}
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/linkedin_config",
+            headers=headers,
+            json={"clave": clave, "valor": json.dumps(valor)}, timeout=10
+        )
+    except Exception:
+        pass
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -151,17 +221,21 @@ def extraer_imagen(entry):
     return ""
 
 def guardar_en_historial(post, noticia, sector, tono):
+    """Guarda en session_state Y en Supabase."""
     if "historial" not in st.session_state:
         st.session_state.historial = []
     etiqueta = SECTORES.get(sector, {}).get("etiqueta", sector)
     tono_label = TONOS.get(tono, {}).get("label", tono)
-    st.session_state.historial.insert(0, {
+    entrada = {
         "fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "titulo": noticia.get("titulo",""),
         "fuente": noticia.get("fuente",""),
-        "sector": etiqueta, "tono": tono_label,
+        "sector": etiqueta,
+        "tono": tono_label,
         "preview": post[:200],
-    })
+    }
+    st.session_state.historial.insert(0, entrada)
+    sb_guardar_post(entrada)
 
 def calcular_racha():
     if "historial" not in st.session_state or not st.session_state.historial:
@@ -293,19 +367,9 @@ def analizar_competencia(sector):
     perfil = cfg.get("perfil", "consultor junior")
     etiqueta = cfg.get("etiqueta", sector)
     prompt = f"""Eres un experto en estrategia de contenido LinkedIn para el sector de {etiqueta} en España.
-
 Basándote en tu conocimiento del mercado laboral español y LinkedIn, analiza qué tipo de contenido publican típicamente los consultores junior y analistas de {perfil} en LinkedIn España.
-
 Devuelve SOLO un JSON válido sin markdown con este formato exacto:
-{{
-  "formatos_populares": ["formato1", "formato2", "formato3", "formato4"],
-  "temas_trending": ["tema1", "tema2", "tema3", "tema4", "tema5"],
-  "ganchos_efectivos": ["ejemplo gancho 1", "ejemplo gancho 2", "ejemplo gancho 3"],
-  "hashtags_top": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5", "#hashtag6"],
-  "mejor_dia_hora": "día y hora con más engagement",
-  "consejo_diferenciacion": "Un consejo concreto de 2-3 frases para diferenciarte de la competencia en este sector",
-  "error_comun": "El error más común que cometen los profesionales junior en este sector en LinkedIn"
-}}"""
+{{"formatos_populares":["f1","f2","f3","f4"],"temas_trending":["t1","t2","t3","t4","t5"],"ganchos_efectivos":["g1","g2","g3"],"hashtags_top":["#h1","#h2","#h3","#h4","#h5","#h6"],"mejor_dia_hora":"día y hora","consejo_diferenciacion":"2-3 frases","error_comun":"el error más común"}}"""
     raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
@@ -313,39 +377,22 @@ def generar_contenido_carrusel(post, noticia, sector):
     client = genai.Client(api_key=GEMINI_API_KEY)
     etiqueta = SECTORES.get(sector, {}).get("etiqueta", sector)
     prompt = f"""Convierte este post de LinkedIn en un carrusel de 5 slides profesional.
-
-POST ORIGINAL:
-{post}
-
-NOTICIA BASE: {noticia.get('titulo','')}
-SECTOR: {etiqueta}
-
-Devuelve SOLO un JSON válido sin markdown:
-{{
-  "sector": "{etiqueta}",
-  "titulo_portada": "Título impactante máximo 8 palabras",
-  "subtitulo_portada": "Subtítulo explicativo máximo 12 palabras",
-  "slides": [
-    {{"titulo": "Título slide 1 (máx 6 palabras)", "cuerpo": "Texto del slide 1 (2-3 frases cortas, concretas)", "dato_destacado": "Dato o cifra llamativa opcional, si no hay pon null"}},
-    {{"titulo": "Título slide 2", "cuerpo": "Texto slide 2", "dato_destacado": null}},
-    {{"titulo": "Título slide 3", "cuerpo": "Texto slide 3", "dato_destacado": "cifra o stat"}},
-    {{"titulo": "Título slide 4", "cuerpo": "Texto slide 4", "dato_destacado": null}},
-    {{"titulo": "Título slide 5", "cuerpo": "Texto slide 5", "dato_destacado": null}}
-  ],
-  "pregunta_final": "Pregunta provocadora para generar debate (máx 15 palabras)",
-  "cta": "Sígueme para más análisis sobre {etiqueta} · Comenta tu opinión"
-}}"""
+POST ORIGINAL: {post}
+NOTICIA BASE: {noticia.get('titulo','')} | SECTOR: {etiqueta}
+Devuelve SOLO JSON válido sin markdown:
+{{"sector":"{etiqueta}","titulo_portada":"máx 8 palabras impactante","subtitulo_portada":"máx 12 palabras","slides":[{{"titulo":"máx 6 palabras","cuerpo":"2-3 frases concretas","dato_destacado":"cifra o null"}},{{"titulo":"","cuerpo":"","dato_destacado":null}},{{"titulo":"","cuerpo":"","dato_destacado":"stat o null"}},{{"titulo":"","cuerpo":"","dato_destacado":null}},{{"titulo":"","cuerpo":"","dato_destacado":null}}],"pregunta_final":"máx 15 palabras provocadora","cta":"Sígueme para más análisis · Comenta tu opinión"}}"""
     raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
     return json.loads(raw.replace("```json","").replace("```","").strip())
 
-# ── Generador de carrusel PDF — Python puro, sin Node.js ─────────────────────
+# ── Carrusel PDF vertical (formato LinkedIn 1080x1350) ────────────────────────
 def crear_carrusel_pdf(contenido: dict) -> bytes:
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.pdfgen import canvas as rl_canvas
     from reportlab.lib import colors
     import io
 
-    W, H = landscape(A4)
+    # Formato vertical 4:3 aprox — 1080x1350px → en puntos (72dpi): 756x945 pt
+    W, H = 540, 675  # mitad para mejor calidad relativa
+
     BG   = colors.HexColor("#0a0a0f")
     CARD = colors.HexColor("#1c1c2e")
     PUR  = colors.HexColor("#6c63ff")
@@ -370,138 +417,138 @@ def crear_carrusel_pdf(contenido: dict) -> bytes:
 
     def base(c, num, total):
         c.setFillColor(BG); c.rect(0, 0, W, H, fill=1, stroke=0)
-        c.setFillColor(MUT); c.setFont("Helvetica", 9)
-        c.drawRightString(W - 18, 16, f"{num} / {total}")
+        c.setFillColor(MUT); c.setFont("Helvetica", 7)
+        c.drawRightString(W - 12, 10, f"{num} / {total}")
 
     def draw_portada(c, data, total):
         base(c, 1, total)
-        MARGIN = 36
-        # Caja oscura de fondo — cubre toda la zona útil igual que los slides
+        MARGIN = 24
         c.setFillColor(colors.HexColor("#0e0e22"))
         c.rect(0, MARGIN, W, H - MARGIN, fill=1, stroke=0)
-        # Barra lateral izquierda
-        c.setFillColor(PUR); c.rect(0, MARGIN, 7, H - MARGIN, fill=1, stroke=0)
-        # Círculo decorativo top-right
-        c.setFillColor(PUR); c.setFillAlpha(0.14)
-        c.circle(W - 40, H + 20, 200, fill=1, stroke=0)
+        c.setFillColor(PUR); c.rect(0, MARGIN, 5, H - MARGIN, fill=1, stroke=0)
+        c.setFillColor(PUR); c.setFillAlpha(0.13)
+        c.circle(W + 10, H, 160, fill=1, stroke=0)
         c.setFillAlpha(1.0)
 
         sector_txt = data.get("sector","").replace("🏦","").replace("♟️","").replace("📊","").strip().upper()
-        # Tamaño dinámico del título — máx 2 líneas
-        for font_size in [46, 40, 34]:
-            t_lines = wrap(c, data.get("titulo_portada",""), "Helvetica-Bold", font_size, W * 0.60)
-            if len(t_lines) <= 2: break
-        line_h = font_size + 16
-        subtitulo_lines = wrap(c, data.get("subtitulo_portada",""), "Helvetica", 19, W * 0.65)[:2]
+        for font_size in [30, 26, 22]:
+            t_lines = wrap(c, data.get("titulo_portada",""), "Helvetica-Bold", font_size, W * 0.82)
+            if len(t_lines) <= 3: break
+        line_h = font_size + 10
+        sub_lines = wrap(c, data.get("subtitulo_portada",""), "Helvetica", 13, W * 0.82)[:3]
 
-        # Centrar verticalmente en la caja
-        badge_h = 28
-        total_h = badge_h + 22 + len(t_lines) * line_h + 26 + len(subtitulo_lines) * 30
+        badge_h = 18
+        total_h = badge_h + 16 + len(t_lines)*line_h + 18 + len(sub_lines)*20
         box_h = H - MARGIN * 2
         start_y = MARGIN + (box_h + total_h) / 2
 
-        # Badge
-        bw = max(160, c.stringWidth(sector_txt, "Helvetica-Bold", 9) + 36)
+        bw = max(100, c.stringWidth(sector_txt, "Helvetica-Bold", 7) + 24)
         c.setFillColor(colors.HexColor("#1a1830"))
-        c.roundRect(28, start_y, bw, badge_h, 14, fill=1, stroke=0)
-        c.setStrokeColor(PUR); c.setLineWidth(0.8)
-        c.roundRect(28, start_y, bw, badge_h, 14, fill=0, stroke=1)
-        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 9)
-        c.drawString(44, start_y + 10, sector_txt)
+        c.roundRect(18, start_y, bw, badge_h, 9, fill=1, stroke=0)
+        c.setStrokeColor(PUR); c.setLineWidth(0.6)
+        c.roundRect(18, start_y, bw, badge_h, 9, fill=0, stroke=1)
+        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 7)
+        c.drawString(28, start_y + 6, sector_txt)
 
-        # Título
-        c.setFillColor(TXT); y = start_y - 46
+        c.setFillColor(TXT); y = start_y - 36
         for line in t_lines:
-            c.setFont("Helvetica-Bold", font_size); c.drawString(28, y, line); y -= line_h
+            c.setFont("Helvetica-Bold", font_size); c.drawString(18, y, line); y -= line_h
 
-        # Subtítulo
-        c.setFillColor(MUT); ys = y - 14
-        for sl in subtitulo_lines:
-            c.setFont("Helvetica", 19); c.drawString(28, ys, sl); ys -= 30
+        c.setFillColor(MUT); ys = y - 10
+        for sl in sub_lines:
+            c.setFont("Helvetica", 13); c.drawString(18, ys, sl); ys -= 20
 
-        # Autor anclado al fondo de la caja
-        c.setFillColor(MUT); c.setFont("Helvetica", 11)
-        c.drawString(28, MARGIN + 14, "Julen · Business & Data Analytics · MSc Big Data & IA")
+        c.setFillColor(MUT); c.setFont("Helvetica", 8)
+        c.drawString(18, MARGIN + 10, "Julen · Business & Data Analytics · MSc Big Data & IA")
         c.showPage()
 
     def draw_contenido(c, slide, idx, total):
         base(c, idx + 2, total)
-        c.setFillColor(PUR); c.rect(0, H - 6, W, 6, fill=1, stroke=0)
-        c.setFillColor(PUR); c.circle(46, H - 52, 26, fill=1, stroke=0)
-        c.setFillColor(WHT); c.setFont("Helvetica-Bold", 22)
-        c.drawCentredString(46, H - 60, str(idx + 1))
-        c.setFillColor(TXT); c.setFont("Helvetica-Bold", 28)
-        c.drawString(86, H - 64, slide.get("titulo","")[:52])
-        c.setStrokeColor(colors.HexColor("#2a2a3e")); c.setLineWidth(1.5)
-        c.line(20, H - 88, W - 20, H - 88)
+        c.setFillColor(PUR); c.rect(0, H - 4, W, 4, fill=1, stroke=0)
+        c.setFillColor(PUR); c.circle(28, H - 32, 17, fill=1, stroke=0)
+        c.setFillColor(WHT); c.setFont("Helvetica-Bold", 14)
+        c.drawCentredString(28, H - 37, str(idx + 1))
+        c.setFillColor(TXT); c.setFont("Helvetica-Bold", 18)
+        titulo = slide.get("titulo","")[:40]
+        c.drawString(52, H - 40, titulo)
+        c.setStrokeColor(colors.HexColor("#2a2a3e")); c.setLineWidth(1)
+        c.line(12, H - 56, W - 12, H - 56)
+
         cuerpo = slide.get("cuerpo","")
         dato = slide.get("dato_destacado")
-        MARGIN_BOTTOM = 36
+        MARGIN_BOTTOM = 24
+
         if dato:
-            cuerpo_lines = wrap(c, cuerpo, "Helvetica", 19, W * 0.52)
-            c.setFillColor(TXT); y = H - 122
-            for line in cuerpo_lines:
-                c.setFont("Helvetica", 19); c.drawString(22, y, line); y -= 30
-            bx = W * 0.60; by = MARGIN_BOTTOM; bw2 = W * 0.36; bh = H - 100 - MARGIN_BOTTOM
-            c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 12, fill=1, stroke=0)
-            c.setStrokeColor(PUR); c.setLineWidth(1.5)
-            c.roundRect(bx, by, bw2, bh, 12, fill=0, stroke=1)
-            c.setFillColor(PUR); c.rect(bx + 16, by + bh - 5, bw2 - 32, 5, fill=1, stroke=0)
-            dato_lines = wrap(c, dato, "Helvetica-Bold", 22, bw2 - 40)
-            total_h_dato = len(dato_lines) * 32
-            dy = by + bh / 2 + total_h_dato / 2 - 4
+            # Texto arriba, caja dato abajo — layout vertical
+            cuerpo_lines = wrap(c, cuerpo, "Helvetica", 13, W - 28)
+            c.setFillColor(TXT); y = H - 76
+            for line in cuerpo_lines[:5]:
+                c.setFont("Helvetica", 13); c.drawString(14, y, line); y -= 20
+
+            # Caja dato ocupa zona inferior
+            bh = 160; by = MARGIN_BOTTOM; bx = 14; bw2 = W - 28
+            c.setFillColor(CARD); c.roundRect(bx, by, bw2, bh, 8, fill=1, stroke=0)
+            c.setStrokeColor(PUR); c.setLineWidth(1)
+            c.roundRect(bx, by, bw2, bh, 8, fill=0, stroke=1)
+            c.setFillColor(PUR); c.rect(bx+10, by+bh-4, bw2-20, 4, fill=1, stroke=0)
+            dato_lines = wrap(c, dato, "Helvetica-Bold", 16, bw2 - 24)
+            total_h_dato = len(dato_lines) * 24
+            dy = by + bh/2 + total_h_dato/2 - 4
             c.setFillColor(AMB)
             for dl in dato_lines:
-                c.setFont("Helvetica-Bold", 22)
-                dw = c.stringWidth(dl, "Helvetica-Bold", 22)
-                c.drawString(bx + (bw2 - dw) / 2, dy, dl); dy -= 32
+                c.setFont("Helvetica-Bold", 16)
+                dw = c.stringWidth(dl, "Helvetica-Bold", 16)
+                c.drawString(bx + (bw2 - dw)/2, dy, dl); dy -= 24
         else:
-            box_top = H - 96; box_bot = MARGIN_BOTTOM
-            box_h = box_top - box_bot; box_x = 20; box_w = W - 40
+            # Caja texto ocupa toda la zona disponible
+            box_top = H - 64; box_bot = MARGIN_BOTTOM
+            box_h = box_top - box_bot; bx = 12; bw2 = W - 24
             c.setFillColor(colors.HexColor("#0e0e22"))
-            c.roundRect(box_x, box_bot, box_w, box_h, 12, fill=1, stroke=0)
-            c.setFillColor(PUR)
-            c.roundRect(box_x, box_bot, 6, box_h, 3, fill=1, stroke=0)
-            test_lines_28 = wrap(c, cuerpo, "Helvetica-Bold", 28, box_w - 60)
-            test_lines_22 = wrap(c, cuerpo, "Helvetica-Bold", 22, box_w - 60)
-            if len(test_lines_28) <= 4:
-                font_size, line_h, lines = 28, 44, test_lines_28
-            else:
-                font_size, line_h, lines = 22, 34, test_lines_22
+            c.roundRect(bx, box_bot, bw2, box_h, 8, fill=1, stroke=0)
+            c.setFillColor(PUR); c.roundRect(bx, box_bot, 5, box_h, 3, fill=1, stroke=0)
+
+            for font_size in [20, 16, 13]:
+                lines = wrap(c, cuerpo, "Helvetica-Bold", font_size, bw2 - 36)
+                if len(lines) <= 6: break
+            line_h = font_size + 8
             text_total_h = len(lines) * line_h
-            text_start_y = box_bot + box_h / 2 + text_total_h / 2 - line_h * 0.3
+            text_start_y = box_bot + box_h/2 + text_total_h/2 - line_h * 0.3
             c.setFillColor(TXT); y_txt = text_start_y
             for line in lines:
                 c.setFont("Helvetica-Bold", font_size)
-                c.drawString(box_x + 26, y_txt, line); y_txt -= line_h
+                c.drawString(bx + 18, y_txt, line); y_txt -= line_h
         c.showPage()
 
     def draw_cta(c, data, total):
         base(c, total, total)
         c.setFillColor(PUR); c.setFillAlpha(0.10)
-        c.circle(W / 2, H / 2 + 20, 260, fill=1, stroke=0)
+        c.circle(W/2, H/2, 200, fill=1, stroke=0)
         c.setFillAlpha(1.0)
-        c.setFillColor(PUR); c.rect(0, 0, W, 36, fill=1, stroke=0)
-        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 10)
+        c.setFillColor(PUR); c.rect(0, 0, W, 26, fill=1, stroke=0)
+
+        c.setFillColor(PURT); c.setFont("Helvetica-Bold", 8)
         label = "¿QUÉ OPINAS TÚ?"
-        c.drawString((W - c.stringWidth(label,"Helvetica-Bold",10)) / 2, H - 65, label)
-        preg_lines = wrap(c, data.get("pregunta_final",""), "Helvetica-Bold", 30, W - 100)
-        c.setFillColor(TXT); y = H - 130
-        for line in preg_lines[:3]:
-            c.setFont("Helvetica-Bold", 30)
-            c.drawString((W - c.stringWidth(line,"Helvetica-Bold",30)) / 2, y, line); y -= 46
-        cta_lines = wrap(c, data.get("cta",""), "Helvetica", 15, W - 100)
-        c.setFillColor(MUT); yc = y - 20
+        c.drawString((W - c.stringWidth(label,"Helvetica-Bold",8))/2, H - 44, label)
+
+        preg_lines = wrap(c, data.get("pregunta_final",""), "Helvetica-Bold", 20, W - 60)
+        c.setFillColor(TXT); y = H - 90
+        for line in preg_lines[:4]:
+            c.setFont("Helvetica-Bold", 20)
+            c.drawString((W - c.stringWidth(line,"Helvetica-Bold",20))/2, y, line); y -= 30
+
+        cta_lines = wrap(c, data.get("cta",""), "Helvetica", 11, W - 60)
+        c.setFillColor(MUT); yc = y - 14
         for cl in cta_lines[:2]:
-            c.setFont("Helvetica", 15)
-            c.drawString((W - c.stringWidth(cl,"Helvetica",15)) / 2, yc, cl); yc -= 24
+            c.setFont("Helvetica", 11)
+            c.drawString((W - c.stringWidth(cl,"Helvetica",11))/2, yc, cl); yc -= 18
+
         autor = "Julen · Business & Data Analytics · MSc Big Data & IA"
-        c.setFillColor(WHT); c.setFont("Helvetica", 10)
-        c.drawString((W - c.stringWidth(autor,"Helvetica",10)) / 2, 12, autor)
+        c.setFillColor(WHT); c.setFont("Helvetica", 8)
+        c.drawString((W - c.stringWidth(autor,"Helvetica",8))/2, 9, autor)
         c.showPage()
 
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=landscape(A4))
+    c = rl_canvas.Canvas(buf, pagesize=(W, H))
     slides = contenido.get("slides", [])
     total = len(slides) + 2
     draw_portada(c, contenido, total)
@@ -644,16 +691,11 @@ def render_calendario():
     html_dias += '</div>'
     st.markdown(html_dias, unsafe_allow_html=True)
     st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px;margin-bottom:6px">Configura tus días de publicación:</div>', unsafe_allow_html=True)
-    opciones = st.multiselect(
-        label="",
-        options=list(range(7)),
-        default=dias_pub,
-        format_func=lambda x: DIAS_SEMANA[x],
-        label_visibility="collapsed",
-        key="sel_dias_pub"
-    )
+    opciones = st.multiselect("", options=list(range(7)), default=dias_pub,
+        format_func=lambda x: DIAS_SEMANA[x], label_visibility="collapsed", key="sel_dias_pub")
     if opciones != dias_pub:
         st.session_state.dias_publicacion = opciones
+        sb_guardar_config("dias_publicacion", opciones)
         st.rerun()
     pendientes = len([d for d in dias_pub if d >= ahora.weekday() and d not in dias_con_post])
     if ahora.weekday() in dias_pub and ahora.weekday() not in dias_con_post:
@@ -668,12 +710,9 @@ def render_analisis_competencia(data):
         return "".join([f'<div class="comp-item">{item}</div>' for item in items])
     st.markdown(f"""
     <div class="comp-card">
-        <div class="comp-section">📋 Formatos más populares</div>
-        {lista_items(data.get("formatos_populares",[]))}
-        <div class="comp-section">🔥 Temas en tendencia</div>
-        {lista_items(data.get("temas_trending",[]))}
-        <div class="comp-section">🎣 Ganchos que funcionan</div>
-        {lista_items(data.get("ganchos_efectivos",[]))}
+        <div class="comp-section">📋 Formatos más populares</div>{lista_items(data.get("formatos_populares",[]))}
+        <div class="comp-section">🔥 Temas en tendencia</div>{lista_items(data.get("temas_trending",[]))}
+        <div class="comp-section">🎣 Ganchos que funcionan</div>{lista_items(data.get("ganchos_efectivos",[]))}
         <div class="comp-section">🏷️ Hashtags top</div>
         <div style="font-size:13px;color:#6c9fff;line-height:2">{" ".join(data.get("hashtags_top",[]))}</div>
         <div class="comp-section">⏰ Mejor momento para publicar</div>
@@ -682,8 +721,120 @@ def render_analisis_competencia(data):
         <div style="font-size:13px;color:#d0d0e0;line-height:1.7;padding:10px 14px;background:rgba(108,99,255,0.08);border-radius:10px;border-left:2px solid #6c63ff">{data.get("consejo_diferenciacion","")}</div>
         <div class="comp-section">⚠️ Error más común a evitar</div>
         <div style="font-size:13px;color:#d0d0e0;line-height:1.7;padding:10px 14px;background:rgba(248,113,113,0.08);border-radius:10px;border-left:2px solid #f87171">{data.get("error_comun","")}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
+
+def render_dashboard():
+    """Dashboard de estadísticas de rendimiento."""
+    historial = st.session_state.get("historial", [])
+    if not historial:
+        st.markdown("<div style='text-align:center;color:#7070a0;font-size:13px;padding:3rem 0'>Aún no hay datos.<br>¡Publica tu primer post para ver estadísticas!</div>", unsafe_allow_html=True)
+        return
+
+    total = len(historial)
+    _, semanas_cons = calcular_racha()
+    ahora = datetime.now()
+
+    # Racha máxima histórica
+    semanas_set = set()
+    for h in historial:
+        d = datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M")
+        semanas_set.add((d.year, d.isocalendar()[1]))
+    racha_max = 0; racha_actual = 0
+    sa, ya = ahora.isocalendar()[1], ahora.year
+    for i in range(104):
+        s, a = sa - i, ya
+        if s <= 0: s += 52; a -= 1
+        if (a, s) in semanas_set:
+            racha_actual += 1
+            racha_max = max(racha_max, racha_actual)
+        else:
+            racha_actual = 0
+
+    # Posts por semana (últimas 8 semanas)
+    semanas_labels = []
+    semanas_counts = []
+    for i in range(7, -1, -1):
+        ref = ahora - timedelta(weeks=i)
+        iso = ref.isocalendar()
+        key = (iso[0], iso[1])
+        count = sum(1 for h in historial
+            if datetime.strptime(h["fecha"], "%d/%m/%Y %H:%M").isocalendar()[:2] == key[:2])
+        semanas_labels.append(f"S{iso[1]}")
+        semanas_counts.append(count)
+
+    # Sectores
+    sector_counts = {}
+    for h in historial:
+        s = h.get("sector","Otro")
+        sector_counts[s] = sector_counts.get(s, 0) + 1
+
+    # Tonos
+    tono_counts = {}
+    for h in historial:
+        t = h.get("tono","Otro")
+        tono_counts[t] = tono_counts.get(t, 0) + 1
+
+    # ── Métricas clave ──────────────────────────────────────────────────────────
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">{total}</div><div class="dash-metric-label">posts totales</div></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">🔥 {semanas_cons}</div><div class="dash-metric-label">semanas seguidas</div></div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown(f'<div class="dash-metric"><div class="dash-metric-num">⭐ {racha_max}</div><div class="dash-metric-label">racha máxima</div></div>', unsafe_allow_html=True)
+
+    # ── Gráfico de barras semanal ───────────────────────────────────────────────
+    st.markdown('<div class="section-label">📈 Posts por semana (últimas 8 semanas)</div>', unsafe_allow_html=True)
+    max_count = max(semanas_counts) if max(semanas_counts) > 0 else 1
+    bars_html = '<div style="display:flex;gap:8px;align-items:flex-end;height:100px;margin-bottom:8px">'
+    for i, (label, count) in enumerate(zip(semanas_labels, semanas_counts)):
+        height_pct = int((count / max_count) * 80) if count > 0 else 4
+        is_current = (i == 7)
+        color = "#6c63ff" if is_current else "#2a2a4a"
+        border = "2px solid #a78bfa" if is_current else "none"
+        bars_html += f'''<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="font-size:10px;color:#7070a0">{count if count > 0 else ""}</div>
+            <div style="width:100%;height:{height_pct}px;background:{color};border-radius:4px 4px 0 0;border:{border}"></div>
+            <div style="font-size:9px;color:#7070a0">{label}</div>
+        </div>'''
+    bars_html += '</div>'
+    st.markdown(bars_html, unsafe_allow_html=True)
+
+    # ── Sectores ───────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">🏷️ Sectores más publicados</div>', unsafe_allow_html=True)
+    sector_colors = {"🏦 Banca": "#3b82f6", "♟️ Estrategia & IA": "#a855f7", "📊 Analista de Datos": "#14b8a6"}
+    sector_html = ""
+    for sector, count in sorted(sector_counts.items(), key=lambda x: -x[1]):
+        pct = int((count / total) * 100)
+        color = sector_colors.get(sector, "#6c63ff")
+        sector_html += f'''<div class="dash-bar-row">
+            <div class="dash-bar-label">{sector}</div>
+            <div class="dash-bar-bg"><div class="dash-bar-fill" style="width:{pct}%;background:{color}"></div></div>
+            <div class="dash-bar-val">{count}</div>
+        </div>'''
+    st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem 1.2rem">{sector_html}</div>', unsafe_allow_html=True)
+
+    # ── Tonos ──────────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">🎭 Tonos utilizados</div>', unsafe_allow_html=True)
+    tono_colors = {"🎓 Estoy aprendiendo": "#fbbf24", "💼 Quiero parecer senior": "#6c63ff", "🔥 Quiero generar debate": "#f87171"}
+    tono_html = ""
+    for tono, count in sorted(tono_counts.items(), key=lambda x: -x[1]):
+        pct = int((count / total) * 100)
+        color = tono_colors.get(tono, "#6c63ff")
+        tono_html += f'''<div class="dash-bar-row">
+            <div class="dash-bar-label" style="width:180px">{tono}</div>
+            <div class="dash-bar-bg"><div class="dash-bar-fill" style="width:{pct}%;background:{color}"></div></div>
+            <div class="dash-bar-val">{count}</div>
+        </div>'''
+    st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem 1.2rem">{tono_html}</div>', unsafe_allow_html=True)
+
+    # ── Último post ────────────────────────────────────────────────────────────
+    if historial:
+        ultimo = historial[0]
+        st.markdown('<div class="section-label">🕐 Último post publicado</div>', unsafe_allow_html=True)
+        pill_map = {"🏦 Banca":"sector-pill-banca","♟️ Estrategia & IA":"sector-pill-estrategia","📊 Analista de Datos":"sector-pill-datos"}
+        pill = pill_map.get(ultimo["sector"],"source-pill")
+        st.markdown(f'<div class="historial-item"><div class="historial-meta"><span class="{pill}">{ultimo["sector"]}</span><span class="source-pill">{ultimo.get("tono","")}</span><span class="historial-fecha">🗓 {ultimo["fecha"]}</span></div><div class="card-title" style="font-size:13px;margin-bottom:4px">{ultimo["titulo"]}</div></div>', unsafe_allow_html=True)
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -694,17 +845,25 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── Init session_state — carga desde Supabase en primer arranque ───────────────
 for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("usadas",[]),("fase","inicio"),("puntuacion",None),
                   ("sector_elegido",""),("sectores_data",{}),
                   ("post_a",""),("post_b",""),("recomendada","A"),("razon",""),
-                  ("tono_elegido","aprendiendo"),("historial",[]),
+                  ("tono_elegido","aprendiendo"),
                   ("post_en",""),("edicion_key",0),
-                  ("dias_publicacion",[0,3]),
                   ("competencia_data",None),("competencia_sector",""),
-                  ("carrusel_pdf",None)]:
+                  ("carrusel_pdf",None),("sb_cargado",False)]:
     if key not in st.session_state:
         st.session_state[key] = val
+
+# Carga inicial desde Supabase (solo una vez por sesión)
+if not st.session_state.sb_cargado:
+    historial_sb = sb_cargar_historial()
+    st.session_state.historial = historial_sb if historial_sb else []
+    dias_sb = sb_cargar_config("dias_publicacion", [1, 4])
+    st.session_state.dias_publicacion = dias_sb
+    st.session_state.sb_cargado = True
 
 # ── INICIO ─────────────────────────────────────────────────────────────────────
 if st.session_state.fase == "inicio":
@@ -717,8 +876,7 @@ if st.session_state.fase == "inicio":
             <div class="stat-card"><div class="stat-num">{total_posts}</div><div class="stat-label">posts generados</div></div>
             <div class="stat-card"><div class="stat-num">{posts_semana}</div><div class="stat-label">esta semana</div></div>
             <div class="stat-card"><div class="stat-num racha-fire">{fuego} {semanas_cons}</div><div class="stat-label">semanas seguidas</div></div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -746,14 +904,36 @@ if st.session_state.fase == "inicio":
         st.session_state.fase = "competencia"
         st.rerun()
 
-    st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
     render_calendario()
 
     if st.session_state.historial:
         st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
-        if st.button("📚  Ver historial de posts", use_container_width=True):
-            st.session_state.fase = "historial"
-            st.rerun()
+        col_h, col_d = st.columns(2)
+        with col_h:
+            if st.button("📚  Ver historial", use_container_width=True):
+                st.session_state.fase = "historial"
+                st.rerun()
+        with col_d:
+            if st.button("📊  Dashboard", use_container_width=True):
+                st.session_state.fase = "dashboard"
+                st.rerun()
+
+# ── DASHBOARD ──────────────────────────────────────────────────────────────────
+elif st.session_state.fase == "dashboard":
+    st.markdown("""
+    <div class="post-header">
+        <div class="post-icon">📊</div>
+        <div>
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Dashboard</div>
+            <div style="font-size:12px;color:#7070a0;margin-top:2px">Tu actividad en LinkedIn</div>
+        </div>
+    </div>""", unsafe_allow_html=True)
+    render_dashboard()
+    st.markdown("<hr>", unsafe_allow_html=True)
+    if st.button("← Volver al inicio"):
+        st.session_state.fase = "inicio"
+        st.rerun()
 
 # ── COMPETENCIA ────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "competencia":
@@ -764,8 +944,7 @@ elif st.session_state.fase == "competencia":
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">¿Qué publica la competencia?</div>
             <div style="font-size:12px;color:#7070a0;margin-top:2px">Análisis de contenido en LinkedIn por sector</div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
     pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos"}
     for sector_key, cfg in SECTORES.items():
         if st.button(cfg["etiqueta"], key=f"comp_{sector_key}", use_container_width=True):
@@ -796,10 +975,9 @@ elif st.session_state.fase == "historial":
         <div class="post-icon">📚</div>
         <div>
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Historial de posts</div>
-            <div style="font-size:12px;color:#7070a0;margin-top:2px">Todos los posts que has generado</div>
+            <div style="font-size:12px;color:#7070a0;margin-top:2px">Guardado en la nube · Persiste entre sesiones</div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
     render_historial()
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio"):
@@ -944,27 +1122,21 @@ elif st.session_state.fase == "post":
             if st.button("✂️ Más corto", use_container_width=True, key="ed_corto"):
                 with st.spinner("Condensando..."):
                     st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Reduce a máximo 150 palabras. Conserva mejores insights y pregunta final.")
-                    st.session_state.puntuacion = None
-                    st.session_state.edicion_key += 1
-                    st.rerun()
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
         with col_e2:
             if st.button("🎣 Nuevo gancho", use_container_width=True, key="ed_gancho"):
                 with st.spinner("Reescribiendo gancho..."):
                     st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Reescribe SOLO las primeras 1-2 líneas con un gancho más impactante. El resto igual.")
-                    st.session_state.puntuacion = None
-                    st.session_state.edicion_key += 1
-                    st.rerun()
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
         with col_e3:
             if st.button("📊 Añade dato", use_container_width=True, key="ed_dato"):
                 with st.spinner("Añadiendo dato..."):
                     st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Incorpora un dato, cifra o estadística concreta. Si no hay, invéntalo de forma verosímil.")
-                    st.session_state.puntuacion = None
-                    st.session_state.edicion_key += 1
-                    st.rerun()
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
 
     with tab2:
         st.markdown('<div class="section-label">🎨 Carrusel PDF para LinkedIn</div>', unsafe_allow_html=True)
-        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:1rem">Genera un PDF con 7 slides listo para subir directamente a LinkedIn como carrusel</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:1rem">Genera un PDF vertical listo para subir directamente a LinkedIn como carrusel</div>', unsafe_allow_html=True)
         if not st.session_state.carrusel_pdf:
             if st.button("🎨  Generar carrusel PDF", use_container_width=True, key="gen_carrusel"):
                 with st.spinner("Gemini estructurando el carrusel..."):
