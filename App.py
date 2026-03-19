@@ -807,6 +807,179 @@ def generar_grafico_png(datos, cfg):
     buf.seek(0)
     return buf.read()
 
+def generar_dashboard_png(datos, cfg, estilo="powerbi"):
+    """
+    Genera una imagen estilo dashboard con KPIs + gráfico.
+    estilo: "powerbi" = colores Microsoft Power BI
+            "dark"    = colores del agente (oscuro + morado)
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import matplotlib.ticker as mticker
+    import io as _io
+
+    fechas = [d[0] for d in datos]
+    valores = [d[1] for d in datos]
+    nombre = cfg.get("nombre", "Indicador")
+    fuente = cfg.get("fuente", "")
+    eje_y = cfg.get("eje_y", "")
+    tipo_g = cfg.get("tipo_grafico", "line")
+
+    # ── Paleta según estilo ────────────────────────────────────────────────
+    if estilo == "powerbi":
+        BG_OUTER   = "#F3F2F1"   # gris claro fondo exterior
+        BG_HEADER  = "#243A5E"   # azul oscuro Power BI
+        BG_CARD    = "#FFFFFF"   # blanco tarjetas
+        BG_CHART   = "#FFFFFF"   # blanco gráfico
+        COLOR_LINE = "#118DFF"   # azul Power BI
+        COLOR_BAR  = "#118DFF"
+        COLOR_ACC  = "#F2C811"   # amarillo Power BI
+        TXT_HEADER = "#FFFFFF"
+        TXT_CARD   = "#252423"
+        TXT_SUB    = "#605E5C"
+        TXT_AXIS   = "#605E5C"
+        GRID_COL   = "#E8E6E3"
+        BORDER_COL = "#D2D0CE"
+        LOGO_TXT   = "Power BI  |  Julen · Business & Data Analytics"
+    else:  # dark
+        BG_OUTER   = "#0a0a0f"
+        BG_HEADER  = "#13131a"
+        BG_CARD    = "#1c1c2e"
+        BG_CHART   = "#13131a"
+        COLOR_LINE = "#6c63ff"
+        COLOR_BAR  = "#6c63ff"
+        COLOR_ACC  = "#fbbf24"
+        TXT_HEADER = "#f0f0f8"
+        TXT_CARD   = "#f0f0f8"
+        TXT_SUB    = "#a78bfa"
+        TXT_AXIS   = "#7070a0"
+        GRID_COL   = "#2a2a4a"
+        BORDER_COL = "#2a2a4a"
+        LOGO_TXT   = "Agente LinK  |  Julen · Business & Data Analytics"
+
+    # ── Layout: 1200x700 px ───────────────────────────────────────────────
+    fig = plt.figure(figsize=(12, 7), facecolor=BG_OUTER)
+
+    # Grid: cabecera + [3 KPIs | gráfico] + footer
+    gs = fig.add_gridspec(
+        3, 4,
+        height_ratios=[0.12, 0.72, 0.08],
+        width_ratios=[1, 1, 1, 3],
+        hspace=0.18, wspace=0.3,
+        left=0.04, right=0.97, top=0.96, bottom=0.04
+    )
+
+    # ── Cabecera ──────────────────────────────────────────────────────────
+    ax_hdr = fig.add_subplot(gs[0, :])
+    ax_hdr.set_facecolor(BG_HEADER)
+    ax_hdr.set_xlim(0, 1); ax_hdr.set_ylim(0, 1)
+    ax_hdr.axis("off")
+    ax_hdr.text(0.02, 0.55, nombre, color=TXT_HEADER,
+                fontsize=13, fontweight="bold", va="center")
+    ax_hdr.text(0.02, 0.15, f"Fuente: {fuente}  ·  {datetime.now().strftime('%d/%m/%Y')}",
+                color=TXT_HEADER, fontsize=8, va="center", alpha=0.75)
+    # Etiqueta estilo badge derecha
+    badge = "Power BI" if estilo == "powerbi" else "Agente LinK"
+    badge_col = COLOR_ACC
+    ax_hdr.text(0.98, 0.5, badge, color=badge_col,
+                fontsize=9, fontweight="bold", va="center", ha="right")
+
+    # ── KPIs (3 tarjetas) ─────────────────────────────────────────────────
+    ultimo = datos[-1] if datos else ("—", 0)
+    penultimo = datos[-2] if len(datos) >= 2 else None
+    variacion = ((ultimo[1] - penultimo[1]) / abs(penultimo[1]) * 100) if penultimo and penultimo[1] != 0 else 0
+    maximo = max(valores) if valores else 0
+    minimo = min(valores) if valores else 0
+    media = sum(valores) / len(valores) if valores else 0
+
+    kpis = [
+        (f"Último valor
+({ultimo[0]})", f"{ultimo[1]:.2f}", f"{variacion:+.1f}% vs anterior",
+         COLOR_ACC if variacion >= 0 else "#ef4444"),
+        ("Máximo
+del período", f"{maximo:.2f}", f"Período: {fechas[valores.index(maximo)] if valores else '—'}", TXT_SUB),
+        ("Media
+del período", f"{media:.2f}", eje_y, TXT_SUB),
+    ]
+
+    for col_i, (titulo, valor, subtitulo, col_sub) in enumerate(kpis):
+        ax_k = fig.add_subplot(gs[1, col_i])
+        ax_k.set_facecolor(BG_CARD)
+        ax_k.set_xlim(0, 1); ax_k.set_ylim(0, 1)
+        ax_k.axis("off")
+        # Borde
+        for spine_pos in ['top','bottom','left','right']:
+            ax_k.spines[spine_pos].set_visible(True)
+            ax_k.spines[spine_pos].set_color(BORDER_COL)
+            ax_k.spines[spine_pos].set_linewidth(0.8)
+        ax_k.set_frame_on(True)
+        # Línea color arriba
+        ax_k.add_patch(mpatches.FancyBboxPatch((0, 0.93), 1, 0.07,
+            boxstyle="square,pad=0", facecolor=COLOR_LINE, linewidth=0))
+        ax_k.text(0.5, 0.78, titulo, color=TXT_SUB, fontsize=8,
+                  ha="center", va="center", linespacing=1.4)
+        ax_k.text(0.5, 0.48, valor, color=TXT_CARD, fontsize=22,
+                  fontweight="bold", ha="center", va="center")
+        ax_k.text(0.5, 0.18, subtitulo, color=col_sub, fontsize=8,
+                  ha="center", va="center")
+
+    # ── Gráfico principal ─────────────────────────────────────────────────
+    ax_chart = fig.add_subplot(gs[1, 3])
+    ax_chart.set_facecolor(BG_CHART)
+
+    n_pts = len(fechas)
+    if tipo_g == "bar":
+        bars = ax_chart.bar(range(n_pts), valores, color=COLOR_BAR, alpha=0.85,
+                            width=0.6, zorder=3)
+        # Último bar destacado
+        if bars:
+            bars[-1].set_facecolor(COLOR_ACC)
+        ax_chart.set_xticks(range(n_pts))
+        ax_chart.set_xticklabels(fechas, rotation=45, ha="right",
+                                  fontsize=8, color=TXT_AXIS)
+    else:
+        ax_chart.plot(range(n_pts), valores, color=COLOR_LINE,
+                      linewidth=2.5, zorder=3, marker="o", markersize=4)
+        ax_chart.fill_between(range(n_pts), valores, alpha=0.12, color=COLOR_LINE)
+        # Último punto destacado
+        if valores:
+            ax_chart.scatter([n_pts-1], [valores[-1]], color=COLOR_ACC,
+                             s=80, zorder=5)
+            ax_chart.annotate(f"{valores[-1]:.2f}",
+                              xy=(n_pts-1, valores[-1]),
+                              xytext=(n_pts-1, valores[-1] + (max(valores)-min(valores))*0.08 + 0.01),
+                              fontsize=9, fontweight="bold", color=COLOR_ACC, ha="center")
+        step = max(1, n_pts // 8)
+        ax_chart.set_xticks(range(0, n_pts, step))
+        ax_chart.set_xticklabels([fechas[i] for i in range(0, n_pts, step)],
+                                  rotation=45, ha="right", fontsize=8, color=TXT_AXIS)
+
+    ax_chart.set_ylabel(eje_y, fontsize=9, color=TXT_AXIS)
+    ax_chart.tick_params(axis="y", labelcolor=TXT_AXIS, labelsize=8)
+    ax_chart.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+    ax_chart.spines["top"].set_visible(False)
+    ax_chart.spines["right"].set_visible(False)
+    ax_chart.spines["left"].set_color(BORDER_COL)
+    ax_chart.spines["bottom"].set_color(BORDER_COL)
+    ax_chart.grid(axis="y", color=GRID_COL, linewidth=0.6, zorder=0)
+
+    # ── Footer ────────────────────────────────────────────────────────────
+    ax_foot = fig.add_subplot(gs[2, :])
+    ax_foot.set_facecolor(BG_OUTER)
+    ax_foot.axis("off")
+    ax_foot.set_xlim(0, 1); ax_foot.set_ylim(0, 1)
+    ax_foot.text(0.5, 0.5, LOGO_TXT, color=TXT_AXIS, fontsize=8,
+                 ha="center", va="center", style="italic")
+
+    buf = _io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                facecolor=fig.get_facecolor())
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()
+
 def generar_post_desde_datos(datos, cfg, tono, tipo_sector):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
@@ -1289,7 +1462,8 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("datos_sector","macro"),("indicador_elegido",None),
                   ("datos_grafico_png",None),("datos_post_generado",""),
                   ("datos_puntuacion",None),("datos_post_en",""),
-                  ("datos_carrusel_pdf",None),("datos_edicion_key",0)]:
+                  ("datos_carrusel_pdf",None),("datos_edicion_key",0),
+                  ("datos_dashboard_pbi",None),("datos_dashboard_dark",None)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -1703,6 +1877,37 @@ elif st.session_state.fase == "datos_sector":
             file_name=f"grafico_{nombre_archivo}.png", mime="image/png",
             use_container_width=True, key="dl_grafico")
         st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:4px;margin-bottom:1rem">💡 Descarga el gráfico y súbelo como imagen a LinkedIn junto con el post de texto</div>', unsafe_allow_html=True)
+
+        # ── Dashboards estilo Power BI ─────────────────────────────────────
+        st.markdown('<div class="section-label">🖥️ Vista Dashboard para LinkedIn</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:12px">Genera una imagen estilo cuadro de mando profesional para subir como imagen junto al post</div>', unsafe_allow_html=True)
+        col_db1, col_db2 = st.columns(2)
+        with col_db1:
+            if st.button("📊  Estilo Power BI", use_container_width=True, key="btn_dash_pbi"):
+                with st.spinner("Generando dashboard Power BI..."):
+                    st.session_state.datos_dashboard_pbi = generar_dashboard_png(datos_act, cfg_act, "powerbi")
+                    st.rerun()
+        with col_db2:
+            if st.button("🌙  Estilo Dark (Agente)", use_container_width=True, key="btn_dash_dark"):
+                with st.spinner("Generando dashboard oscuro..."):
+                    st.session_state.datos_dashboard_dark = generar_dashboard_png(datos_act, cfg_act, "dark")
+                    st.rerun()
+
+        if st.session_state.datos_dashboard_pbi:
+            st.markdown('<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-top:12px;margin-bottom:6px">📊 ESTILO POWER BI</div>', unsafe_allow_html=True)
+            st.image(st.session_state.datos_dashboard_pbi, use_container_width=True)
+            nom_pbi = re.sub(r"[^a-z0-9]+", "_", cfg_act.get("nombre","dashboard").lower())[:30]
+            st.download_button(label="⬇️  Descargar dashboard Power BI", data=st.session_state.datos_dashboard_pbi,
+                file_name=f"dashboard_pbi_{nom_pbi}.png", mime="image/png",
+                use_container_width=True, key="dl_dash_pbi")
+
+        if st.session_state.datos_dashboard_dark:
+            st.markdown('<div style="font-size:11px;color:#6c63ff;font-weight:600;margin-top:12px;margin-bottom:6px">🌙 ESTILO DARK</div>', unsafe_allow_html=True)
+            st.image(st.session_state.datos_dashboard_dark, use_container_width=True)
+            nom_dark = re.sub(r"[^a-z0-9]+", "_", cfg_act.get("nombre","dashboard").lower())[:30]
+            st.download_button(label="⬇️  Descargar dashboard Dark", data=st.session_state.datos_dashboard_dark,
+                file_name=f"dashboard_dark_{nom_dark}.png", mime="image/png",
+                use_container_width=True, key="dl_dash_dark")
 
         if datos_act:
             valores = [d[1] for d in datos_act]
