@@ -1257,20 +1257,82 @@ Devuelve SOLO el texto del post."""
 # ── Funciones IBEX 35 ─────────────────────────────────────────────────────────
 
 def buscar_resultados_empresa(empresa_key):
-    """Busca en NewsAPI y CNMV RSS los ultimos resultados de la empresa."""
+    """Busca resultados financieros de la empresa en: RSS prensa, CNMV y NewsAPI."""
     cfg = EMPRESAS_IBEX.get(empresa_key, {})
-    query = cfg.get("query_news", empresa_key + " resultados")
+    ticker = cfg.get("ticker", "")
+    anio_actual = datetime.now().year
     resultados = []
 
-    # 1. NewsAPI — siempre buscar los mas recientes (ultimos 180 dias, ordenados por fecha)
-    # Enriquecer query con año actual para forzar resultados recientes
-    anio_actual = datetime.now().year
-    query_reciente = query + f' AND ("{anio_actual}" OR "{anio_actual-1}")'
+    # 1. RSS prensa financiera española — fuentes directas, sin límite de plan
+    RSS_FINANCIERO = [
+        ("Expansión - Empresas",    "https://e00-expansion.uecdn.es/rss/empresas.xml"),
+        ("Expansión - Mercados",    "https://e00-expansion.uecdn.es/rss/mercados.xml"),
+        ("El Economista - Empresas","https://www.eleconomista.es/rss/rss-empresas.php"),
+        ("El Economista - Banca",   "https://www.eleconomista.es/rss/rss-banca.php"),
+        ("Cinco Días",              "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
+        ("El Confidencial - Empresas","https://www.elconfidencial.com/rss/empresas/"),
+    ]
+    nombre_lower = empresa_key.lower()
+    ticker_lower = ticker.lower()
+    keywords_res = ["resultado", "beneficio", "ganancia", "facturación", "ventas", "trimestre", "semestre", "anual", "ebitda", "ingreso"]
+    hace_180 = datetime.now() - timedelta(days=180)
+    for fuente, url_rss in RSS_FINANCIERO:
+        try:
+            feed = feedparser.parse(url_rss)
+            for entry in feed.entries[:20]:
+                titulo = entry.get("title", "") or ""
+                resumen = entry.get("summary", entry.get("description", ""))[:500] or ""
+                titulo_lower = titulo.lower()
+                # Debe mencionar la empresa Y alguna keyword de resultados
+                if (nombre_lower not in titulo_lower and ticker_lower not in titulo_lower):
+                    continue
+                if not any(kw in titulo_lower or kw in resumen.lower() for kw in keywords_res):
+                    continue
+                try:
+                    pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
+                except Exception:
+                    pub = datetime.now()
+                if pub < hace_180:
+                    continue
+                url = entry.get("link", "")
+                resultados.append({
+                    "titulo": titulo[:200], "resumen": resumen,
+                    "fuente": fuente, "url": url,
+                    "fecha": pub.strftime("%d/%m/%Y"),
+                    "_ts": pub,
+                })
+        except Exception:
+            pass
+
+    # 2. CNMV RSS — hechos relevantes oficiales
     try:
-        desde = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+        feed = feedparser.parse("https://www.cnmv.es/portal/HR/RSSHechosRelevantes.ashx")
+        for entry in feed.entries[:60]:
+            titulo = entry.get("title", "") or ""
+            if nombre_lower not in titulo.lower() and ticker_lower not in titulo.lower():
+                continue
+            resumen = entry.get("summary", entry.get("description", ""))[:500]
+            url = entry.get("link", "")
+            try:
+                pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
+            except Exception:
+                pub = datetime.now()
+            resultados.append({
+                "titulo": titulo[:200], "resumen": resumen,
+                "fuente": "CNMV · Hechos Relevantes",
+                "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                "_ts": pub,
+            })
+    except Exception:
+        pass
+
+    # 3. NewsAPI — query simple sin AND anidados (más compatible con plan básico)
+    try:
+        query_simple = f'"{empresa_key}" resultados {anio_actual}'
+        desde = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
         r = requests.get(
             "https://newsapi.org/v2/everything",
-            params={"q": query_reciente, "language": "es", "sortBy": "publishedAt",
+            params={"q": query_simple, "language": "es", "sortBy": "publishedAt",
                     "pageSize": 10, "from": desde, "apiKey": NEWSAPI_KEY},
             timeout=10
         )
@@ -1290,35 +1352,20 @@ def buscar_resultados_empresa(empresa_key):
                     "titulo": titulo[:200], "resumen": resumen[:500],
                     "fuente": a.get("source",{}).get("name","NewsAPI"),
                     "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                    "_ts": pub,
                 })
     except Exception:
         pass
 
-    # 2. CNMV RSS (hechos relevantes)
-    try:
-        cnmv_rss = "https://www.cnmv.es/portal/HR/RSSHechosRelevantes.ashx"
-        feed = feedparser.parse(cnmv_rss)
-        nombre = empresa_key.lower()
-        for entry in feed.entries[:50]:
-            titulo = entry.get("title", "")
-            if nombre in titulo.lower() or cfg.get("ticker","").lower() in titulo.lower():
-                resumen = entry.get("summary", entry.get("description", ""))[:500]
-                url = entry.get("link", "")
-                try:
-                    pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
-                except Exception:
-                    pub = datetime.now()
-                resultados.append({
-                    "titulo": titulo[:200], "resumen": resumen,
-                    "fuente": "CNMV · Hechos Relevantes",
-                    "url": url, "fecha": pub.strftime("%d/%m/%Y"),
-                })
-    except Exception:
-        pass
-
-    # Ordenar por fecha descendente
-    resultados.sort(key=lambda x: x.get("fecha",""), reverse=True)
-    return resultados[:6]
+    # Ordenar por fecha descendente, deduplicar por URL
+    vistos = set()
+    unicos = []
+    for r in sorted(resultados, key=lambda x: x.get("_ts", datetime.now()), reverse=True):
+        if r["url"] not in vistos:
+            vistos.add(r["url"])
+            r.pop("_ts", None)
+            unicos.append(r)
+    return unicos[:8]
 
 
 def extraer_kpis_empresa(empresa_key, noticias):
@@ -1363,33 +1410,48 @@ Si no encuentras datos financieros concretos, devuelve {{"encontrado": false}}""
 
 
 def generar_dashboard_empresa_png(empresa_key, kpi_data, historico_key, estilo="powerbi"):
-    """Genera dashboard PNG con KPIs extraidos + historico de la empresa."""
+    """Dashboard adaptativo: todos los KPIs historicos juntos en el grafico."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     import matplotlib.ticker as mticker
+    import numpy as np
     import io as _io
 
     cfg = EMPRESAS_IBEX.get(empresa_key, {})
     historico = cfg.get("historico", {})
-    datos_hist = historico.get(historico_key, [])
-    fechas_h = [d[0] for d in datos_hist]
-    valores_h = [d[1] for d in datos_hist]
 
     if estilo == "powerbi":
         BG_OUTER = "#F3F2F1"; BG_HEADER = "#243A5E"; BG_CARD = "#FFFFFF"
-        BG_CHART = "#FFFFFF"; COLOR_LINE = "#118DFF"; COLOR_BAR = "#118DFF"
-        COLOR_ACC = "#F2C811"; TXT_HEADER = "#FFFFFF"; TXT_CARD = "#252423"
+        BG_CHART = "#FFFFFF"; TXT_HEADER = "#FFFFFF"; TXT_CARD = "#252423"
         TXT_SUB = "#605E5C"; TXT_AXIS = "#605E5C"; GRID_COL = "#E8E6E3"
-        BORDER_COL = "#D2D0CE"
+        BORDER_COL = "#D2D0CE"; COLOR_LINE = "#118DFF"; COLOR_ACC = "#F2C811"
+        PALETA = ["#118DFF", "#F2C811", "#E66C37", "#43A047", "#8B5CF6"]
     else:
         BG_OUTER = "#0a0a0f"; BG_HEADER = "#13131a"; BG_CARD = "#1c1c2e"
-        BG_CHART = "#13131a"; COLOR_LINE = "#6c63ff"; COLOR_BAR = "#6c63ff"
-        COLOR_ACC = "#fbbf24"; TXT_HEADER = "#f0f0f8"; TXT_CARD = "#f0f0f8"
+        BG_CHART = "#13131a"; TXT_HEADER = "#f0f0f8"; TXT_CARD = "#f0f0f8"
         TXT_SUB = "#a78bfa"; TXT_AXIS = "#7070a0"; GRID_COL = "#2a2a4a"
-        BORDER_COL = "#2a2a4a"
+        BORDER_COL = "#2a2a4a"; COLOR_LINE = "#6c63ff"; COLOR_ACC = "#fbbf24"
+        PALETA = ["#6c63ff", "#fbbf24", "#4ade80", "#f87171", "#a78bfa"]
 
+    # ── Analizar KPIs: separar los que tienen escala M EUR de los que son % ──
+    kpis_eur = {}   # nombre -> lista de (periodo, valor)
+    kpis_pct = {}   # nombre -> lista de (periodo, valor)
+    for nombre_k, datos_k in historico.items():
+        if "%" in nombre_k:
+            kpis_pct[nombre_k] = datos_k
+        else:
+            kpis_eur[nombre_k] = datos_k
+
+    # Periodos comunes (unión de todos)
+    todos_periodos = []
+    for datos_k in list(kpis_eur.values()) + list(kpis_pct.values()):
+        for p, _ in datos_k:
+            if p not in todos_periodos:
+                todos_periodos.append(p)
+
+    # ── Layout ──
     fig = plt.figure(figsize=(12, 7), facecolor=BG_OUTER)
     gs = fig.add_gridspec(3, 4, height_ratios=[0.12, 0.72, 0.08],
                           width_ratios=[1, 1, 1, 3], hspace=0.18, wspace=0.3,
@@ -1398,69 +1460,109 @@ def generar_dashboard_empresa_png(empresa_key, kpi_data, historico_key, estilo="
     # Cabecera
     ax_hdr = fig.add_subplot(gs[0, :])
     ax_hdr.set_facecolor(BG_HEADER); ax_hdr.set_xlim(0,1); ax_hdr.set_ylim(0,1); ax_hdr.axis("off")
-    titulo_hdr = cfg.get("emoji","") + " " + empresa_key + " — " + cfg.get("sector","")
-    ax_hdr.text(0.02, 0.55, titulo_hdr, color=TXT_HEADER, fontsize=13, fontweight="bold", va="center")
-    periodo = kpi_data.get("periodo","") if kpi_data else ""
-    ax_hdr.text(0.02, 0.15, f"Resultados {periodo}  ·  Fuente: CNMV / Prensa financiera  ·  {datetime.now().strftime('%d/%m/%Y')}",
+    ax_hdr.text(0.02, 0.55, cfg.get("emoji","") + " " + empresa_key + " — " + cfg.get("sector",""),
+                color=TXT_HEADER, fontsize=13, fontweight="bold", va="center")
+    periodo_txt = kpi_data.get("periodo","") if kpi_data else todos_periodos[-1] if todos_periodos else ""
+    ax_hdr.text(0.02, 0.15, f"Resultados {periodo_txt}  ·  Fuente: CNMV / Prensa  ·  {datetime.now().strftime('%d/%m/%Y')}",
                 color=TXT_HEADER, fontsize=8, va="center", alpha=0.75)
 
-    # KPI cards — usar kpis extraidos o historico
-    kpis_extraidos = kpi_data.get("kpis", []) if kpi_data else []
-    kpis_display = []
-    for k in kpis_extraidos[:3]:
-        variacion = k.get("variacion_pct", 0) or 0
-        col_var = COLOR_ACC if variacion >= 0 else "#ef4444"
-        kpis_display.append((
-            k.get("nombre","KPI"), f"{k.get('valor',0):,.0f}".replace(",","."),
-            f"{variacion:+.1f}% vs anterior · " + k.get("unidad",""), col_var
-        ))
-    # Completar con historico si faltan KPIs
-    if len(kpis_display) < 3 and datos_hist:
-        ultimo_val = valores_h[-1] if valores_h else 0
-        penult_val = valores_h[-2] if len(valores_h) >= 2 else ultimo_val
-        var_hist = ((ultimo_val - penult_val) / abs(penult_val) * 100) if penult_val != 0 else 0
-        col_v = COLOR_ACC if var_hist >= 0 else "#ef4444"
-        kpis_display.append((historico_key.split("(")[0].strip(),
-                             f"{ultimo_val:,.0f}".replace(",","."),
-                             f"{var_hist:+.1f}% vs {fechas_h[-2] if len(fechas_h)>=2 else 'anterior'}", col_v))
-
-    while len(kpis_display) < 3:
-        kpis_display.append(("-", "-", "-", TXT_SUB))
-
-    for col_i, (titulo, valor, subtitulo, col_sub) in enumerate(kpis_display[:3]):
+    # ── 3 tarjetas KPI — ultimo valor de cada indicador historico ──
+    todos_kpis = list(kpis_eur.items()) + list(kpis_pct.items())
+    for col_i in range(3):
         ax_k = fig.add_subplot(gs[1, col_i])
         ax_k.set_facecolor(BG_CARD); ax_k.set_xlim(0,1); ax_k.set_ylim(0,1); ax_k.axis("off")
         for sp in ['top','bottom','left','right']:
             ax_k.spines[sp].set_visible(True); ax_k.spines[sp].set_color(BORDER_COL)
             ax_k.spines[sp].set_linewidth(0.8)
         ax_k.set_frame_on(True)
+        color_card = PALETA[col_i % len(PALETA)]
         ax_k.add_patch(mpatches.FancyBboxPatch((0, 0.93), 1, 0.07,
-            boxstyle="square,pad=0", facecolor=COLOR_LINE, linewidth=0))
-        titulo_corto = titulo[:22] if len(titulo) > 22 else titulo
-        ax_k.text(0.5, 0.78, titulo_corto, color=TXT_SUB, fontsize=7, ha="center", va="center", linespacing=1.4)
-        ax_k.text(0.5, 0.50, valor, color=TXT_CARD, fontsize=18, fontweight="bold", ha="center", va="center")
-        subtit_corto = subtitulo[:35] if len(subtitulo) > 35 else subtitulo
-        ax_k.text(0.5, 0.20, subtit_corto, color=col_sub, fontsize=7, ha="center", va="center")
+            boxstyle="square,pad=0", facecolor=color_card, linewidth=0))
+        if col_i < len(todos_kpis):
+            nombre_k, datos_k = todos_kpis[col_i]
+            ult = datos_k[-1] if datos_k else ("", 0)
+            pen = datos_k[-2] if len(datos_k) >= 2 else None
+            var = ((ult[1] - pen[1]) / abs(pen[1]) * 100) if pen and pen[1] != 0 else 0
+            col_var = COLOR_ACC if var >= 0 else "#ef4444"
+            es_pct = "%" in nombre_k
+            val_str = f"{ult[1]:.1f}%" if es_pct else f"{ult[1]:,.0f}".replace(",",".")
+            titulo_corto = nombre_k.split("(")[0].strip()[:20]
+            ax_k.text(0.5, 0.78, titulo_corto, color=TXT_SUB, fontsize=7,
+                      ha="center", va="center", linespacing=1.3)
+            ax_k.text(0.5, 0.50, val_str, color=TXT_CARD, fontsize=18,
+                      fontweight="bold", ha="center", va="center")
+            ax_k.text(0.5, 0.22, f"{var:+.1f}% · {ult[0]}", color=col_var,
+                      fontsize=7, ha="center", va="center")
+        else:
+            ax_k.text(0.5, 0.50, "—", color=TXT_SUB, fontsize=14, ha="center", va="center")
 
-    # Grafico historico
+    # ── Grafico principal — adaptativo ──
     ax_chart = fig.add_subplot(gs[1, 3])
     ax_chart.set_facecolor(BG_CHART)
-    if datos_hist:
-        n_pts = len(fechas_h)
-        ax_chart.bar(range(n_pts), valores_h, color=COLOR_BAR, alpha=0.8, width=0.6, zorder=3)
-        if n_pts > 0:
-            import matplotlib.patches as mp2
-            ax_chart.patches[-1].set_facecolor(COLOR_ACC)
-        ax_chart.set_xticks(range(n_pts))
-        ax_chart.set_xticklabels(fechas_h, rotation=0, ha="center", fontsize=9, color=TXT_AXIS)
-        titulo_graf = historico_key.split("(")[0].strip()
-        ax_chart.set_title(titulo_graf, fontsize=10, color=TXT_AXIS, pad=6)
-        # Etiquetas valores
-        for i, v in enumerate(valores_h):
-            ax_chart.text(i, v + max(valores_h)*0.02, f"{v:,.0f}".replace(",","."),
-                         ha="center", fontsize=7, color=TXT_AXIS, fontweight="bold")
-    ax_chart.set_ylabel("M EUR", fontsize=8, color=TXT_AXIS)
+
+    n_periodos = len(todos_periodos)
+
+    if kpis_eur and len(kpis_pct) == 0:
+        # Solo KPIs en M EUR → barras agrupadas
+        n_grupos = len(kpis_eur)
+        ancho = 0.7 / n_grupos
+        for gi, (nombre_k, datos_k) in enumerate(kpis_eur.items()):
+            vals = []
+            for p in todos_periodos:
+                v = next((d[1] for d in datos_k if d[0] == p), 0)
+                vals.append(v)
+            offset = (gi - n_grupos/2 + 0.5) * ancho
+            bars = ax_chart.bar([x + offset for x in range(n_periodos)], vals,
+                                width=ancho * 0.9, color=PALETA[gi % len(PALETA)],
+                                alpha=0.85, label=nombre_k.split("(")[0].strip(), zorder=3)
+        ax_chart.set_ylabel("M EUR", fontsize=8, color=TXT_AXIS)
+        ax_chart.legend(fontsize=7, loc="upper left",
+                        facecolor=BG_CARD, edgecolor=BORDER_COL, labelcolor=TXT_AXIS)
+
+    elif kpis_eur and kpis_pct:
+        # KPIs mixtos → eje doble: barras para M EUR, línea para %
+        ax2 = ax_chart.twinx()
+        for gi, (nombre_k, datos_k) in enumerate(kpis_eur.items()):
+            vals = [next((d[1] for d in datos_k if d[0] == p), 0) for p in todos_periodos]
+            n_eur = len(kpis_eur)
+            ancho = 0.6 / n_eur
+            offset = (gi - n_eur/2 + 0.5) * ancho
+            ax_chart.bar([x + offset for x in range(n_periodos)], vals,
+                         width=ancho*0.9, color=PALETA[gi % len(PALETA)],
+                         alpha=0.75, label=nombre_k.split("(")[0].strip(), zorder=3)
+        for gi, (nombre_k, datos_k) in enumerate(kpis_pct.items()):
+            vals = [next((d[1] for d in datos_k if d[0] == p), None) for p in todos_periodos]
+            xs = [i for i, v in enumerate(vals) if v is not None]
+            ys = [v for v in vals if v is not None]
+            ax2.plot(xs, ys, color=PALETA[(len(kpis_eur)+gi) % len(PALETA)],
+                     linewidth=2, marker="o", markersize=5,
+                     label=nombre_k.split("(")[0].strip(), zorder=5)
+        ax_chart.set_ylabel("M EUR", fontsize=8, color=TXT_AXIS)
+        ax2.set_ylabel("%", fontsize=8, color=TXT_AXIS)
+        ax2.tick_params(axis="y", labelcolor=TXT_AXIS, labelsize=7)
+        ax2.spines["right"].set_color(BORDER_COL)
+        # Leyenda combinada
+        lines1, labels1 = ax_chart.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax_chart.legend(lines1+lines2, labels1+labels2, fontsize=6, loc="upper left",
+                        facecolor=BG_CARD, edgecolor=BORDER_COL, labelcolor=TXT_AXIS)
+    else:
+        # Solo ratios % → líneas
+        for gi, (nombre_k, datos_k) in enumerate(kpis_pct.items()):
+            vals = [next((d[1] for d in datos_k if d[0] == p), None) for p in todos_periodos]
+            xs = [i for i, v in enumerate(vals) if v is not None]
+            ys = [v for v in vals if v is not None]
+            ax_chart.plot(xs, ys, color=PALETA[gi % len(PALETA)],
+                          linewidth=2.5, marker="o", markersize=5,
+                          label=nombre_k.split("(")[0].strip(), zorder=3)
+        ax_chart.set_ylabel("%", fontsize=8, color=TXT_AXIS)
+        ax_chart.legend(fontsize=7, loc="upper left",
+                        facecolor=BG_CARD, edgecolor=BORDER_COL, labelcolor=TXT_AXIS)
+
+    ax_chart.set_xticks(range(n_periodos))
+    ax_chart.set_xticklabels(todos_periodos, rotation=25, ha="right", fontsize=8, color=TXT_AXIS)
     ax_chart.tick_params(axis="y", labelcolor=TXT_AXIS, labelsize=8)
+    ax_chart.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",",".")))
     ax_chart.spines["top"].set_visible(False); ax_chart.spines["right"].set_visible(False)
     ax_chart.spines["left"].set_color(BORDER_COL); ax_chart.spines["bottom"].set_color(BORDER_COL)
     ax_chart.grid(axis="y", color=GRID_COL, linewidth=0.6, zorder=0)
@@ -2615,14 +2717,10 @@ elif st.session_state.fase == "ibex":
 
     cfg_ibex = EMPRESAS_IBEX[empresa_sel]
 
-    # Selector KPI historico a mostrar en grafico
+    # Sin selector — usamos todos los KPIs del historico juntos
     historico_keys = list(cfg_ibex.get("historico", {}).keys())
-    if historico_keys:
-        ibex_hist_key = st.selectbox("Indicador histórico a mostrar en dashboard",
-            options=historico_keys, label_visibility="visible", key="sel_ibex_hist")
-        st.session_state.ibex_historico_key = ibex_hist_key
-    else:
-        ibex_hist_key = ""
+    ibex_hist_key = historico_keys[0] if historico_keys else ""
+    st.session_state.ibex_historico_key = ibex_hist_key
 
     st.markdown("<div style='margin-top:0.5rem'></div>", unsafe_allow_html=True)
 
