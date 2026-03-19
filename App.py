@@ -895,13 +895,10 @@ def generar_dashboard_png(datos, cfg, estilo="powerbi"):
     media = sum(valores) / len(valores) if valores else 0
 
     kpis = [
-        (f"Último valor
-({ultimo[0]})", f"{ultimo[1]:.2f}", f"{variacion:+.1f}% vs anterior",
+        ("Ultimo valor\n(" + ultimo[0] + ")", f"{ultimo[1]:.2f}", f"{variacion:+.1f}% vs anterior",
          COLOR_ACC if variacion >= 0 else "#ef4444"),
-        ("Máximo
-del período", f"{maximo:.2f}", f"Período: {fechas[valores.index(maximo)] if valores else '—'}", TXT_SUB),
-        ("Media
-del período", f"{media:.2f}", eje_y, TXT_SUB),
+        ("Maximo\ndel periodo", f"{maximo:.2f}", "Periodo: " + (fechas[valores.index(maximo)] if valores else "-"), TXT_SUB),
+        ("Media\ndel periodo", f"{media:.2f}", eje_y, TXT_SUB),
     ]
 
     for col_i, (titulo, valor, subtitulo, col_sub) in enumerate(kpis):
