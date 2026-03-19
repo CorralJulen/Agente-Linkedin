@@ -973,7 +973,97 @@ def generar_dashboard_png(datos, cfg, estilo="powerbi"):
     buf.seek(0)
     return buf.read()
 
-def generar_post_desde_datos(datos, cfg, tono, tipo_sector):
+def buscar_noticia_indicador(cfg):
+    """Busca en NewsAPI la noticia mas reciente relacionada con el indicador.
+    Devuelve dict con titulo, resumen, fuente, url, fecha o None si no encuentra nada."""
+    QUERIES_INDICADOR = {
+        "Tipo de interes BCE": '"BCE" OR "banco central europeo" OR "tipo de interes" OR "tipos BCE"',
+        "IPC": '"IPC" OR "inflacion España" OR "precios consumo" OR "INE inflacion"',
+        "PIB": '"PIB España" OR "producto interior bruto" OR "crecimiento economico España"',
+        "paro": '"paro España" OR "desempleo España" OR "EPA" OR "tasa desempleo"',
+        "Euribor": '"Euribor" OR "tipo hipoteca" OR "interes hipotecario"',
+        "IA": '"inteligencia artificial empresa" OR "IA empresas" OR "adopcion IA"',
+        "cloud": '"cloud computing empresa" OR "nube empresas España" OR "computacion nube"',
+        "Big Data": '"big data empresa" OR "analisis datos empresa" OR "datos masivos"',
+        "automatizacion": '"automatizacion empleo" OR "robots trabajo" OR "IA empleo"',
+    }
+    nombre = cfg.get("nombre", "")
+    query = None
+    for kw, q in QUERIES_INDICADOR.items():
+        if kw.lower() in nombre.lower():
+            query = q
+            break
+    if not query:
+        fuente = cfg.get("fuente", "")
+        query = '"' + nombre[:40] + '"'
+    try:
+        desde = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        r = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q": query,
+                "language": "es",
+                "sortBy": "publishedAt",
+                "pageSize": 5,
+                "from": desde,
+                "apiKey": NEWSAPI_KEY,
+            },
+            timeout=10
+        )
+        if r.status_code != 200:
+            return None
+        arts = r.json().get("articles", [])
+        for a in arts:
+            titulo = a.get("title", "") or ""
+            resumen = a.get("description", "") or a.get("content", "") or ""
+            url = a.get("url", "")
+            if not titulo or not url or len(resumen) < 40: continue
+            palabras_ingles = ["the ", "this ", "that ", "with ", "from ", "have "]
+            texto_lower = (titulo + " " + resumen).lower()
+            if sum(1 for p in palabras_ingles if p in texto_lower) >= 3: continue
+            try:
+                published = datetime.fromisoformat(a.get("publishedAt", "").replace("Z", ""))
+            except Exception:
+                published = datetime.now()
+            return {
+                "titulo": titulo[:200],
+                "resumen": resumen[:400],
+                "fuente": a.get("source", {}).get("name", "NewsAPI"),
+                "url": url,
+                "fecha": published.strftime("%d/%m/%Y"),
+            }
+    except Exception:
+        pass
+    return None
+
+def actualizar_dato_indicador(cfg, noticia):
+    """Usa Gemini para extraer el valor mas reciente del indicador desde una noticia.
+    Devuelve (periodo, valor) o None si no puede extraer."""
+    if not noticia:
+        return None
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    prompt = f"""Eres un extractor de datos economicos. Lee el siguiente titular y resumen de noticia
+y extrae el valor numerico mas reciente del indicador indicado.
+
+INDICADOR: {cfg.get('nombre','')}
+UNIDAD: {cfg.get('eje_y','')}
+TITULAR: {noticia.get('titulo','')}
+RESUMEN: {noticia.get('resumen','')}
+FECHA NOTICIA: {noticia.get('fecha','')}
+
+Devuelve SOLO un JSON valido sin markdown:
+{{"periodo": "ej: Mar-25 o T1-25 o 2025", "valor": 3.5, "encontrado": true}}
+Si no encuentras un valor numerico claro, devuelve: {{"periodo": "", "valor": 0, "encontrado": false}}"""
+    try:
+        raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+        result = json.loads(raw.replace("```json","").replace("```","").strip())
+        if result.get("encontrado") and result.get("periodo") and result.get("valor") != 0:
+            return (result["periodo"], float(result["valor"]))
+    except Exception:
+        pass
+    return None
+
+def generar_post_desde_datos(datos, cfg, tono, tipo_sector, noticia_relacionada=None):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
     if datos:
@@ -987,7 +1077,20 @@ def generar_post_desde_datos(datos, cfg, tono, tipo_sector):
         tendencia = "incierta"
         ultimo_valor = "N/D"
         ultima_fecha = "reciente"
-    sector_label = "macroeconomía y finanzas" if tipo_sector == "macro" else "tecnología e inteligencia artificial empresarial"
+    sector_label = "macroeconomia y finanzas" if tipo_sector == "macro" else "tecnologia e inteligencia artificial empresarial"
+
+    bloque_noticia = ""
+    if noticia_relacionada:
+        bloque_noticia = f"""
+NOTICIA DE ACTUALIDAD RELACIONADA (usar como contexto adicional):
+Titular: {noticia_relacionada.get('titulo','')}
+Fuente: {noticia_relacionada.get('fuente','')} · {noticia_relacionada.get('fecha','')}
+Resumen: {noticia_relacionada.get('resumen','')}
+
+INSTRUCCION EXTRA: Conecta los datos historicos del grafico con esta noticia de actualidad.
+Menciona el titular o el hecho reciente en el cuerpo del post para dar contexto de hoy.
+"""
+
     prompt = f"""Escribe un post de LinkedIn basado en datos reales de {sector_label}.
 
 INDICADOR: {cfg.get('nombre','')}
@@ -996,7 +1099,7 @@ FUENTE: {cfg.get('fuente','')}
 ULTIMO VALOR: {ultimo_valor} ({ultima_fecha})
 TENDENCIA: {tendencia}
 EVOLUCION RECIENTE: {resumen_datos}
-
+{bloque_noticia}
 TONO: {instruccion_tono}
 
 REGLAS ESTRICTAS:
@@ -1456,7 +1559,8 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("datos_grafico_png",None),("datos_post_generado",""),
                   ("datos_puntuacion",None),("datos_post_en",""),
                   ("datos_carrusel_pdf",None),("datos_edicion_key",0),
-                  ("datos_dashboard_pbi",None),("datos_dashboard_dark",None)]:
+                  ("datos_dashboard_pbi",None),("datos_dashboard_dark",None),
+                  ("datos_noticia_rel",None),("datos_update_msg","")]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -1912,16 +2016,70 @@ elif st.session_state.fase == "datos_sector":
             c2.metric("Variación", f"{variacion:+.2f}%")
             c3.metric("Máximo período", f"{max(valores):.2f}")
 
+        # ── Capa 2: Noticia de actualidad relacionada ─────────────────────────
+        st.markdown('<div class="section-label">📰 Noticia de actualidad relacionada</div>', unsafe_allow_html=True)
+        col_n1, col_n2 = st.columns([3, 1])
+        with col_n1:
+            if st.session_state.datos_noticia_rel:
+                nr = st.session_state.datos_noticia_rel
+                st.markdown(f'<div style="background:#13131a;border:1px solid rgba(108,99,255,0.25);border-radius:12px;padding:10px 14px;font-size:12px"><span style="color:#a78bfa;font-size:10px;font-weight:700">{nr["fuente"]} · {nr["fecha"]}</span><br><span style="color:#f0f0f8;font-weight:600">{nr["titulo"][:120]}</span><br><span style="color:#7070a0;font-size:11px">{nr["resumen"][:160]}...</span><br><a href="{nr["url"]}" target="_blank" style="font-size:10px;color:#6c63ff">Ver noticia ↗</a></div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="font-size:12px;color:#7070a0;padding:8px 0">Busca una noticia reciente para enriquecer el post con contexto de actualidad</div>', unsafe_allow_html=True)
+        with col_n2:
+            if st.button("🔍 Buscar noticia", use_container_width=True, key="btn_buscar_noticia"):
+                with st.spinner("Buscando..."):
+                    st.session_state.datos_noticia_rel = buscar_noticia_indicador(cfg_act)
+                    if not st.session_state.datos_noticia_rel:
+                        st.warning("No se encontro noticia reciente.")
+                    st.rerun()
+            if st.session_state.datos_noticia_rel:
+                if st.button("✕ Quitar", use_container_width=True, key="btn_quitar_noticia"):
+                    st.session_state.datos_noticia_rel = None
+                    st.rerun()
+
+        # ── Capa 3: Actualizar dato desde noticia ──────────────────────────────
+        if st.session_state.datos_noticia_rel:
+            st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:8px;margin-bottom:4px">¿La noticia contiene un dato más reciente que el gráfico? Extráelo con IA:</div>', unsafe_allow_html=True)
+            col_u1, col_u2 = st.columns([3, 1])
+            with col_u1:
+                if st.session_state.datos_update_msg:
+                    color_msg = "#4ade80" if "actualizado" in st.session_state.datos_update_msg else "#fbbf24"
+                    st.markdown(f'<div style="font-size:12px;color:{color_msg};padding:6px 0">{st.session_state.datos_update_msg}</div>', unsafe_allow_html=True)
+            with col_u2:
+                if st.button("🔄 Extraer dato", use_container_width=True, key="btn_update_dato"):
+                    with st.spinner("Gemini extrayendo dato..."):
+                        resultado = actualizar_dato_indicador(cfg_act, st.session_state.datos_noticia_rel)
+                        if resultado:
+                            periodo, valor = resultado
+                            # Solo añadir si el periodo no existe ya
+                            periodos_existentes = [d[0] for d in datos_act]
+                            if periodo not in periodos_existentes:
+                                datos_act.append((periodo, valor))
+                                st.session_state.indicador_elegido["datos"] = datos_act
+                                # Regenerar gráfico con el nuevo dato
+                                st.session_state.datos_grafico_png = generar_grafico_png(datos_act, cfg_act)
+                                st.session_state.datos_dashboard_pbi = None
+                                st.session_state.datos_dashboard_dark = None
+                                st.session_state.datos_update_msg = f"✅ Dato actualizado: {periodo} = {valor:.2f}"
+                            else:
+                                st.session_state.datos_update_msg = f"⚠️ El periodo {periodo} ya existe en los datos"
+                        else:
+                            st.session_state.datos_update_msg = "No se pudo extraer un dato claro de la noticia"
+                    st.rerun()
+
         st.markdown('<div class="section-label">✦ Generar post LinkedIn</div>', unsafe_allow_html=True)
 
         if not st.session_state.datos_post_generado:
             st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:12px">Elige el tono y Gemini analizará los datos para generar un post con reflexión de futuro</div>', unsafe_allow_html=True)
+            if st.session_state.datos_noticia_rel:
+                st.markdown('<div style="font-size:11px;color:#4ade80;margin-bottom:8px">✦ El post incluirá la noticia de actualidad como contexto</div>', unsafe_allow_html=True)
             col_t1, col_t2, col_t3 = st.columns(3)
             for i, (tono_key, tono_cfg) in enumerate(TONOS.items()):
                 with [col_t1, col_t2, col_t3][i]:
                     if st.button(tono_cfg["label"], key=f"datos_tono_{tono_key}", use_container_width=True):
                         with st.spinner("Gemini analizando datos..."):
-                            post = generar_post_desde_datos(datos_act, cfg_act, tono_key, tipo_act)
+                            post = generar_post_desde_datos(datos_act, cfg_act, tono_key, tipo_act,
+                                                            noticia_relacionada=st.session_state.datos_noticia_rel)
                             st.session_state.datos_post_generado = post
                             st.session_state.tono_elegido = tono_key
                             st.session_state.datos_edicion_key += 1
@@ -1988,7 +2146,8 @@ elif st.session_state.fase == "datos_sector":
             with ca4:
                 if st.button("🔄  Cambiar indicador", use_container_width=True, key="dcambiar"):
                     st.session_state.indicador_elegido = None; st.session_state.datos_grafico_png = None
-                    st.session_state.datos_post_generado = ""; st.rerun()
+                    st.session_state.datos_post_generado = ""; st.session_state.datos_noticia_rel = None
+                    st.session_state.datos_update_msg = ""; st.rerun()
 
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver al inicio", key="datos_volver"):
@@ -1996,6 +2155,8 @@ elif st.session_state.fase == "datos_sector":
         st.session_state.indicador_elegido = None
         st.session_state.datos_grafico_png = None
         st.session_state.datos_post_generado = ""
+        st.session_state.datos_noticia_rel = None
+        st.session_state.datos_update_msg = ""
         st.rerun()
 
 # ── COMPETENCIA ────────────────────────────────────────────────────────────────
