@@ -6,3 +6,4 @@ google-genai
 reportlab
 openpyxl
 plotly
+matplotlib
