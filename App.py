@@ -34,22 +34,22 @@ RSS_DATOS = [
     ("Datanalytics",             "https://www.datanalytics.com/feed/"),
     ("Analytics Lane",           "https://www.analyticslane.com/feed/"),
     ("BBVA Open Mind",           "https://www.bbvaopenmind.com/feed/"),
+    ("Silicon.es",               "https://www.silicon.es/feed"),
     ("El Economista - Empresas", "https://www.eleconomista.es/rss/rss-empresas.php"),
-    ("Cinco Días",               "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
 ]
-# IA — fuentes especializadas + NewsAPI como respaldo garantizado
+# IA — fuentes tech empresarial especializadas (Microsoft, Google, IA en empresa)
 RSS_IA = [
-    ("El Confidencial - Tech",   "https://www.elconfidencial.com/rss/tecnologia/"),
-    ("Xataka",                   "https://feeds.weblogssl.com/xataka"),
+    ("Silicon.es",               "https://www.silicon.es/feed"),
+    ("Muycomputer",              "https://www.muycomputer.com/feed/"),
+    ("Hipertextual",             "https://hipertextual.com/feed"),
+    ("El Referente",             "https://elreferente.es/feed/"),
     ("El Economista - Tech",     "https://www.eleconomista.es/rss/rss-tecnologia.php"),
-    ("ABC - Tecnología",         "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
-    ("La Vanguardia - Tecno",    "https://www.lavanguardia.com/rss/home.xml"),
 ]
 
 KEYWORDS_BANCA = ["banco","banca","financiero","finanzas","crédito","hipoteca","tipos de interés","BCE","banco central","entidad financiera","inversión","bolsa","mercado","deuda","capital","fondo","dividendo","acción","cotización","préstamo","morosidad","regulación bancaria"]
 KEYWORDS_ESTRATEGIA = ["estrategia","empresa","CEO","directivo","fusión","adquisición","resultado","beneficio","facturación","negocio","mercado","competencia","innovación","transformación","consultor","management","liderazgo","startup","venture","inteligencia artificial","IA","digital"]
 KEYWORDS_DATOS = ["business intelligence","BI","analítica de datos","cuadro de mando","dashboard","power bi","tableau","data warehouse","ETL","lago de datos","modelo predictivo","ciencia de datos","data science","analista de datos","visualización de datos","gobernanza del dato","arquitectura de datos","KPI","reporting","minería de datos"]
-KEYWORDS_IA = ["inteligencia artificial","IA en empresa","IA aplicada","automatización inteligente","LLM","modelo de lenguaje","ChatGPT en empresa","IA generativa","adopción de IA","IA y empleo","regulación IA","IA en banca","IA en consultoría","estrategia de IA","transformación digital con IA","copilot empresarial","IA y datos","impacto IA"]
+KEYWORDS_IA = ["Microsoft IA","Google IA","OpenAI","Gemini","Copilot","Azure IA","Google Cloud IA","lanzamiento IA","inversión IA","IA empresarial","IA generativa empresa","adopción IA empresa","productividad IA","automatización empresarial","transformación digital IA","IA y negocio","herramienta IA","modelo lenguaje empresa","IA aplicada negocio","startup IA"]
 
 SECTORES = {
     "banca":      {"feeds": RSS_BANCA,      "etiqueta": "🏦 Banca",                  "perfil": "consultor de banca y finanzas",  "keywords": KEYWORDS_BANCA},
@@ -220,6 +220,27 @@ def es_relevante(titulo, resumen, keywords):
     texto = (titulo + " " + resumen).lower()
     return any(kw.lower() in texto for kw in keywords)
 
+# Palabras negativas — descartan noticias irrelevantes o dañinas para el perfil
+PALABRAS_NEGATIVAS_IA = [
+    "peligro","peligros","acoso","menor","menores","niño","niños","adolescente",
+    "demanda","denuncia","delito","abuso","violencia","pornografía","desnudo",
+    "auricular","auriculares","smartphone","móvil","consola","videojuego",
+    "coche eléctrico","vehículo","automóvil","televisor","tablet","reloj inteligente",
+    "precio","oferta","compra","tienda","amazon","rebaja",
+]
+PALABRAS_NEGATIVAS_DATOS = [
+    "coche eléctrico","vehículo","automóvil","ayuda industrial","subvención coche",
+    "auricular","smartphone","consola","videojuego","televisor",
+    "precio","oferta","compra","tienda","rebaja",
+    "peligro","acoso","menor","demanda judicial","denuncia",
+]
+
+def es_noticia_valida(titulo, resumen, sector):
+    """Descarta noticias con palabras negativas según el sector."""
+    texto = (titulo + " " + resumen).lower()
+    lista = PALABRAS_NEGATIVAS_IA if sector == "ia" else PALABRAS_NEGATIVAS_DATOS if sector == "datos" else []
+    return not any(p.lower() in texto for p in lista)
+
 def extraer_imagen(entry):
     if hasattr(entry, "media_content"):
         for m in entry.media_content:
@@ -300,6 +321,7 @@ def parsear_un_feed(sector, excluir_urls):
                 titulo = entry.get("title","")
                 if not titulo or len(resumen) < 80: continue
                 if keywords and not es_relevante(titulo, resumen, keywords): continue
+                if not es_noticia_valida(titulo, resumen, sector): continue
                 return {"fuente": fuente, "titulo": titulo, "resumen": resumen,
                         "url": entry.get("link",""),
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
@@ -308,14 +330,14 @@ def parsear_un_feed(sector, excluir_urls):
     # Respaldo NewsAPI para BI e IA si RSS no encuentra nada
     NEWSAPI_QUERIES = {
         "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "ciencia de datos")', "NewsAPI BI"),
-        "ia":    ('("inteligencia artificial" OR "IA generativa" OR "ChatGPT" OR "LLM")', "NewsAPI IA"),
+        "ia":    ('("Microsoft IA" OR "Google IA" OR "OpenAI" OR "Gemini" OR "Copilot" OR "IA empresarial" OR "adopción inteligencia artificial")', "NewsAPI IA"),
     }
     if sector in NEWSAPI_QUERIES:
         query, label = NEWSAPI_QUERIES[sector]
         arts = _newsapi_buscar(query, label)
         for art in arts:
             if art["url"] in excluir_urls: continue
-            if es_relevante(art["titulo"], art["resumen"], keywords):
+            if es_relevante(art["titulo"], art["resumen"], keywords) and es_noticia_valida(art["titulo"], art["resumen"], sector):
                 art["_sector"] = sector
                 return art
     return None
@@ -385,6 +407,7 @@ def fetch_noticias_por_sector():
                     resumen = entry.get("summary", entry.get("description",""))[:400]
                     if not titulo or len(resumen) < 80: continue
                     if keywords and not es_relevante(titulo, resumen, keywords): continue
+                    if not es_noticia_valida(titulo, resumen, sector): continue
                     noticias.append({"fuente": fuente, "titulo": titulo, "resumen": resumen,
                         "url": entry.get("link",""),
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
@@ -395,7 +418,7 @@ def fetch_noticias_por_sector():
     # Queries NewsAPI por sector (solo para BI e IA donde RSS falla más)
     NEWSAPI_QUERIES = {
         "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "cuadro de mando" OR "ciencia de datos")', "NewsAPI BI"),
-        "ia":    ('("inteligencia artificial" OR "IA generativa" OR "ChatGPT" OR "LLM" OR "automatización IA")', "NewsAPI IA"),
+        "ia":    ('("Microsoft IA" OR "Google IA" OR "OpenAI" OR "Gemini" OR "Copilot" OR "IA empresarial" OR "IA generativa empresa" OR "adopción inteligencia artificial")', "NewsAPI IA"),
     }
 
     resultado = {}
@@ -409,7 +432,7 @@ def fetch_noticias_por_sector():
             api_arts = _newsapi_buscar(query, label)
             # Filtrar por keywords también
             for art in api_arts:
-                if es_relevante(art["titulo"], art["resumen"], keywords):
+                if es_relevante(art["titulo"], art["resumen"], keywords) and es_noticia_valida(art["titulo"], art["resumen"], sector):
                     pool.append(art)
         resultado[sector] = random.choice(pool) if pool else None
     return resultado
