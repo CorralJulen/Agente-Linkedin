@@ -367,7 +367,7 @@ def _newsapi_buscar(query_es, fuente_label):
     except Exception:
         return []
 
-@st.cache_data(ttl=1800, show_spinner=False)
+
 def fetch_noticias_por_sector():
     hace_5_dias = datetime.now() - timedelta(days=5)
 
