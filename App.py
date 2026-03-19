@@ -842,7 +842,7 @@ def generar_dashboard_png(datos, cfg, estilo="powerbi"):
         TXT_AXIS   = "#605E5C"
         GRID_COL   = "#E8E6E3"
         BORDER_COL = "#D2D0CE"
-        LOGO_TXT   = "Power BI  |  Julen · Business & Data Analytics"
+        LOGO_TXT   = ""
     else:  # dark
         BG_OUTER   = "#0a0a0f"
         BG_HEADER  = "#13131a"
@@ -857,7 +857,7 @@ def generar_dashboard_png(datos, cfg, estilo="powerbi"):
         TXT_AXIS   = "#7070a0"
         GRID_COL   = "#2a2a4a"
         BORDER_COL = "#2a2a4a"
-        LOGO_TXT   = "Agente LinK  |  Julen · Business & Data Analytics"
+        LOGO_TXT   = ""
 
     # ── Layout: 1200x700 px ───────────────────────────────────────────────
     fig = plt.figure(figsize=(12, 7), facecolor=BG_OUTER)
@@ -880,11 +880,7 @@ def generar_dashboard_png(datos, cfg, estilo="powerbi"):
                 fontsize=13, fontweight="bold", va="center")
     ax_hdr.text(0.02, 0.15, f"Fuente: {fuente}  ·  {datetime.now().strftime('%d/%m/%Y')}",
                 color=TXT_HEADER, fontsize=8, va="center", alpha=0.75)
-    # Etiqueta estilo badge derecha
-    badge = "Power BI" if estilo == "powerbi" else "Agente LinK"
-    badge_col = COLOR_ACC
-    ax_hdr.text(0.98, 0.5, badge, color=badge_col,
-                fontsize=9, fontweight="bold", va="center", ha="right")
+
 
     # ── KPIs (3 tarjetas) ─────────────────────────────────────────────────
     ultimo = datos[-1] if datos else ("—", 0)
