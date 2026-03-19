@@ -28,27 +28,27 @@ RSS_ESTRATEGIA = [
     ("El País - Economía",         "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada"),
     ("Cinco Días",                 "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
 ]
-# Datos + BI + ML — solo fuentes españolas
+# Datos + BI + ML — fuentes especializadas en negocio y datos, sin tech general
 RSS_DATOS = [
-    ("El Confidencial - Tech", "https://www.elconfidencial.com/rss/tecnologia/"),
-    ("Xataka",                 "https://feeds.weblogssl.com/xataka"),
-    ("El País - Tecnología",   "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada"),
-    ("El Español - Tech",      "https://www.elespanol.com/rss/tecnologia/"),
-    ("ABC - Tecnología",       "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
+    ("Cinco Días",               "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
+    ("El Economista - Empresas", "https://www.eleconomista.es/rss/rss-empresas.php"),
+    ("Expansión - Empresas",     "https://e00-expansion.uecdn.es/rss/empresas.xml"),
+    ("El Confidencial - Tecno",  "https://www.elconfidencial.com/rss/tecnologia/"),
+    ("Computing España",         "https://www.computing.es/feed/"),
 ]
-# IA — solo fuentes españolas
+# IA — fuentes especializadas en IA aplicada a empresa, sin tech de consumo
 RSS_IA = [
-    ("Xataka",                 "https://feeds.weblogssl.com/xataka"),
-    ("El Confidencial - Tech", "https://www.elconfidencial.com/rss/tecnologia/"),
-    ("El País - Tecnología",   "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada"),
-    ("El Economista - Tech",   "https://www.eleconomista.es/rss/rss-tecnologia.php"),
-    ("ABC - Tecnología",       "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
+    ("El Español - Tech",        "https://www.elespanol.com/rss/tecnologia/"),
+    ("ABC - Tecnología",         "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
+    ("La Vanguardia - Tecno",    "https://www.lavanguardia.com/rss/home.xml"),
+    ("El Economista - Tech",     "https://www.eleconomista.es/rss/rss-tecnologia.php"),
+    ("Expansión - Empresas",     "https://e00-expansion.uecdn.es/rss/empresas.xml"),
 ]
 
 KEYWORDS_BANCA = ["banco","banca","financiero","finanzas","crédito","hipoteca","tipos de interés","BCE","banco central","entidad financiera","inversión","bolsa","mercado","deuda","capital","fondo","dividendo","acción","cotización","préstamo","morosidad","regulación bancaria"]
 KEYWORDS_ESTRATEGIA = ["estrategia","empresa","CEO","directivo","fusión","adquisición","resultado","beneficio","facturación","negocio","mercado","competencia","innovación","transformación","consultor","management","liderazgo","startup","venture","inteligencia artificial","IA","digital"]
-KEYWORDS_DATOS = ["datos","analítica","business intelligence","BI","machine learning","aprendizaje automático","dashboard","visualización","tableau","power bi","data warehouse","ETL","big data","modelo predictivo","análisis de datos","algoritmo","python","sql","automatización","estadística","data science"]
-KEYWORDS_IA = ["inteligencia artificial","IA","ChatGPT","GPT","LLM","modelo de lenguaje","OpenAI","Google","Gemini","Anthropic","Claude","DeepMind","deep learning","red neuronal","generativa","Copilot","automatización IA","robótica","AGI","transformer","IA generativa"]
+KEYWORDS_DATOS = ["business intelligence","BI","analítica de datos","cuadro de mando","dashboard","power bi","tableau","data warehouse","ETL","lago de datos","modelo predictivo","ciencia de datos","data science","analista de datos","visualización de datos","gobernanza del dato","arquitectura de datos","KPI","reporting","minería de datos"]
+KEYWORDS_IA = ["inteligencia artificial","IA en empresa","IA aplicada","automatización inteligente","LLM","modelo de lenguaje","ChatGPT en empresa","IA generativa","adopción de IA","IA y empleo","regulación IA","IA en banca","IA en consultoría","estrategia de IA","transformación digital con IA","copilot empresarial","IA y datos","impacto IA"]
 
 SECTORES = {
     "banca":      {"feeds": RSS_BANCA,      "etiqueta": "🏦 Banca",                  "perfil": "consultor de banca y finanzas",  "keywords": KEYWORDS_BANCA},
@@ -340,7 +340,7 @@ def fetch_noticias_por_sector():
 def generar_dos_posts(noticia, perfil, tono):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
-    base = f"""Eres un {perfil} junior. MSc Big Data, IA y Business Analytics en curso.
+    base = f"""Escribe un post de LinkedIn sobre la siguiente noticia del sector de {perfil}.
 NOTICIA: {noticia['titulo']} | {noticia['fuente']} | {noticia['resumen']}
 TONO: {instruccion_tono}
 
@@ -349,6 +349,7 @@ REGLAS ESTRICTAS DE FORMATO Y ESTILO:
 2. EMOJIS: Usa un máximo de 2 emojis en todo el texto (solo al principio o al final de las frases).
 3. CIERRE: Termina con una pregunta polarizante o desafiante sobre el sector que invite al debate en los comentarios.
 4. PARÁMETROS: Post en ESPAÑOL (150-250 palabras). Gancho → análisis (3-5 insights) → pregunta. 5-8 hashtags al final.
+5. IMPORTANTE: NO menciones en ningún momento que eres estudiante, consultor junior, que estudias un máster ni ningún rol o título académico. Escribe con criterio propio sin etiquetar al autor.
 NO menciones que eres una IA. Devuelve SOLO el texto del post."""
     resp_a = client.models.generate_content(model="gemini-flash-latest", contents=base+"\nESTILO: Analítico y técnico.")
     resp_b = client.models.generate_content(model="gemini-flash-latest", contents=base+"\nESTILO: Cercano y reflexivo, storytelling.")
@@ -365,7 +366,7 @@ NO menciones que eres una IA. Devuelve SOLO el texto del post."""
 def generar_post(noticia, perfil, tono="aprendiendo"):
     client = genai.Client(api_key=GEMINI_API_KEY)
     instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
-    prompt = f"""Eres un {perfil} junior. MSc Big Data, IA y Business Analytics en curso.
+    prompt = f"""Escribe un post de LinkedIn sobre la siguiente noticia del sector de {perfil}.
 NOTICIA: {noticia['titulo']} | {noticia['fuente']} | {noticia['resumen']}
 TONO: {instruccion_tono}
 
@@ -374,12 +375,25 @@ REGLAS ESTRICTAS DE FORMATO Y ESTILO:
 2. EMOJIS: Usa un máximo de 2 emojis en todo el texto (solo al principio o al final de las frases).
 3. CIERRE: Termina con una pregunta polarizante o desafiante sobre el sector que invite al debate en los comentarios.
 4. PARÁMETROS: Post en ESPAÑOL (150-250 palabras). Gancho → análisis (3-5 insights) → pregunta. 5-8 hashtags al final.
+5. IMPORTANTE: NO menciones en ningún momento que eres estudiante, consultor junior, que estudias un máster ni ningún rol o título académico. Escribe con criterio propio sin etiquetar al autor.
 NO menciones que eres una IA. Devuelve SOLO el texto del post."""
     return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
 
 def editar_post_guiado(post, instruccion):
     client = genai.Client(api_key=GEMINI_API_KEY)
     prompt = f"""Editor experto LinkedIn. POST:\n{post}\nINSTRUCCIÓN: {instruccion}\nApplica SOLO el cambio. Devuelve SOLO el post modificado."""
+    return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+
+def cambiar_pregunta_final(post, modo):
+    """Regenera solo la pregunta final del post según el modo elegido."""
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    instrucciones = {
+        "favor": "Reescribe SOLO la pregunta final del post con una pregunta que posicione al autor a FAVOR del tema de la noticia, que invite al debate desde una perspectiva positiva hacia la innovación y el avance del sector. El resto del post queda exactamente igual.",
+        "debate": "Reescribe SOLO la pregunta final del post con una pregunta muy provocadora y polarizante que genere debate, sin posicionarse en contra del tema principal. Que enfrente dos posturas del sector. El resto del post queda exactamente igual.",
+        "reflexion": "Reescribe SOLO la pregunta final del post con una pregunta reflexiva y abierta que invite a compartir experiencias personales del lector sobre el tema. Nada de polémica, solo reflexión. El resto del post queda exactamente igual.",
+    }
+    instruccion = instrucciones.get(modo, instrucciones["debate"])
+    prompt = f"""Editor experto LinkedIn. POST:\n{post}\nINSTRUCCIÓN: {instruccion}\nDevuelve SOLO el post completo con la nueva pregunta final."""
     return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
 
 def traducir_post_ingles(post):
@@ -1425,6 +1439,24 @@ elif st.session_state.fase == "post":
             if st.button("📊 Añade dato", use_container_width=True, key="ed_dato"):
                 with st.spinner("Añadiendo dato..."):
                     st.session_state.post_generado = editar_post_guiado(st.session_state.post_generado,"Incorpora un dato, cifra o estadística concreta. Si no hay, invéntalo de forma verosímil.")
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
+
+        st.markdown('<div class="edicion-guiada-label">🔄 Cambiar pregunta final</div>', unsafe_allow_html=True)
+        col_p1, col_p2, col_p3 = st.columns(3)
+        with col_p1:
+            if st.button("💪 A favor del tema", use_container_width=True, key="preg_favor"):
+                with st.spinner("Reescribiendo pregunta..."):
+                    st.session_state.post_generado = cambiar_pregunta_final(st.session_state.post_generado, "favor")
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
+        with col_p2:
+            if st.button("🔥 Provocar debate", use_container_width=True, key="preg_debate"):
+                with st.spinner("Reescribiendo pregunta..."):
+                    st.session_state.post_generado = cambiar_pregunta_final(st.session_state.post_generado, "debate")
+                    st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
+        with col_p3:
+            if st.button("💭 Reflexión abierta", use_container_width=True, key="preg_reflexion"):
+                with st.spinner("Reescribiendo pregunta..."):
+                    st.session_state.post_generado = cambiar_pregunta_final(st.session_state.post_generado, "reflexion")
                     st.session_state.puntuacion = None; st.session_state.edicion_key += 1; st.rerun()
 
     with tab2:
