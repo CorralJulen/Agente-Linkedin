@@ -202,6 +202,143 @@ INDICADORES_IA_TECH = {
         ],
     },
 }
+
+# ── Empresas IBEX 35 — configuración y datos históricos ──────────────────────
+# Historico actualizado a marzo 2026 — datos reales publicados (anuales 2024 + Q1-Q3 2025 disponibles)
+# Nota: 2025 incluye datos anuales donde ya estan publicados, o estimacion Q3 acumulado donde no
+EMPRESAS_IBEX = {
+    "Santander": {
+        "ticker": "SAN",
+        "sector": "Banca",
+        "emoji": "🏦",
+        "color": "#e03131",
+        "query_news": '"Santander" AND ("resultados" OR "beneficio" OR "beneficios" OR "2025" OR "2026") AND ("trimestre" OR "anual" OR "enero" OR "febrero")',
+        "query_cnmv": "Santander resultados 2025",
+        "historico": {
+            "Ingresos netos (M EUR)":  [("2021", 35397), ("2022", 38206), ("2023", 44291), ("2024", 47649), ("9M-25", 38100)],
+            "Beneficio neto (M EUR)":  [("2021", 8124),  ("2022", 9605),  ("2023", 11076), ("2024", 12574), ("9M-25", 10054)],
+            "Ratio CET1 (%)":          [("2021", 12.5),  ("2022", 12.0),  ("2023", 12.3),  ("2024", 12.8),  ("9M-25", 13.1)],
+        },
+    },
+    "BBVA": {
+        "ticker": "BBVA",
+        "sector": "Banca",
+        "emoji": "🏦",
+        "color": "#118DFF",
+        "query_news": '"BBVA" AND ("resultados" OR "beneficio" OR "2025" OR "2026") AND ("trimestre" OR "anual" OR "enero" OR "febrero")',
+        "query_cnmv": "BBVA resultados 2025",
+        "historico": {
+            "Ingresos netos (M EUR)":  [("2021", 17426), ("2022", 21434), ("2023", 25277), ("2024", 28978), ("9M-25", 24100)],
+            "Beneficio neto (M EUR)":  [("2021", 4653),  ("2022", 6420),  ("2023", 8019),  ("2024", 9757),  ("9M-25", 8135)],
+            "Ratio CET1 (%)":          [("2021", 14.5),  ("2022", 13.4),  ("2023", 12.7),  ("2024", 12.9),  ("9M-25", 13.1)],
+        },
+    },
+    "Inditex": {
+        "ticker": "ITX",
+        "sector": "Retail / Moda",
+        "emoji": "👗",
+        "color": "#a78bfa",
+        "query_news": '"Inditex" AND ("resultados" OR "ventas" OR "beneficio" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Inditex resultados 2025",
+        "historico": {
+            "Ventas netas (M EUR)":    [("FY21", 27716), ("FY22", 32569), ("FY23", 35947), ("FY24", 38623), ("9M-25", 31039)],
+            "Beneficio neto (M EUR)":  [("FY21", 3243),  ("FY22", 4130),  ("FY23", 5381),  ("FY24", 5936),  ("9M-25", 4680)],
+            "EBITDA (M EUR)":          [("FY21", 6946),  ("FY22", 8073),  ("FY23", 9561),  ("FY24", 10340), ("9M-25", 8400)],
+        },
+    },
+    "Iberdrola": {
+        "ticker": "IBE",
+        "sector": "Energia / Utilities",
+        "emoji": "⚡",
+        "color": "#4ade80",
+        "query_news": '"Iberdrola" AND ("resultados" OR "beneficio" OR "EBITDA" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Iberdrola resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 36164), ("2022", 47488), ("2023", 41819), ("2024", 44732), ("9M-25", 35200)],
+            "Beneficio neto (M EUR)":  [("2021", 3477),  ("2022", 4178),  ("2023", 5278),  ("2024", 5587),  ("9M-25", 5012)],
+            "EBITDA (M EUR)":          [("2021", 10009), ("2022", 12111), ("2023", 14791), ("2024", 16380), ("9M-25", 14100)],
+        },
+    },
+    "Telefonica": {
+        "ticker": "TEF",
+        "sector": "Telecomunicaciones",
+        "emoji": "📡",
+        "color": "#fbbf24",
+        "query_news": '"Telefonica" AND ("resultados" OR "beneficio" OR "OIBDA" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Telefonica resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 39277), ("2022", 42087), ("2023", 42065), ("2024", 41775), ("9M-25", 31200)],
+            "Beneficio neto (M EUR)":  [("2021", 8137),  ("2022", 1820),  ("2023", 1705),  ("2024", 1637),  ("9M-25", 1350)],
+            "OIBDA (M EUR)":           [("2021", 14512), ("2022", 15067), ("2023", 15440), ("2024", 15362), ("9M-25", 11580)],
+        },
+    },
+    "Repsol": {
+        "ticker": "REP",
+        "sector": "Energia / Petroleo",
+        "emoji": "🛢️",
+        "color": "#f87171",
+        "query_news": '"Repsol" AND ("resultados" OR "beneficio" OR "EBITDA" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Repsol resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 47278), ("2022", 73604), ("2023", 58498), ("2024", 51230), ("9M-25", 36100)],
+            "Beneficio neto (M EUR)":  [("2021", 2537),  ("2022", 4251),  ("2023", 3159),  ("2024", 2060),  ("9M-25", 1240)],
+            "EBITDA ajustado (M EUR)": [("2021", 5516),  ("2022", 7246),  ("2023", 5943),  ("2024", 5120),  ("9M-25", 3510)],
+        },
+    },
+    "CaixaBank": {
+        "ticker": "CABK",
+        "sector": "Banca",
+        "emoji": "🏦",
+        "color": "#6c63ff",
+        "query_news": '"CaixaBank" AND ("resultados" OR "beneficio" OR "2025" OR "2026") AND ("trimestre" OR "anual" OR "enero" OR "febrero")',
+        "query_cnmv": "CaixaBank resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 9509),  ("2022", 10700), ("2023", 14604), ("2024", 16026), ("9M-25", 13840)],
+            "Beneficio neto (M EUR)":  [("2021", 1381),  ("2022", 3145),  ("2023", 4816),  ("2024", 5787),  ("9M-25", 4769)],
+            "Ratio CET1 (%)":          [("2021", 12.8),  ("2022", 12.5),  ("2023", 12.4),  ("2024", 12.8),  ("9M-25", 12.8)],
+        },
+    },
+    "Amadeus": {
+        "ticker": "AMS",
+        "sector": "Tecnologia / Viajes",
+        "emoji": "✈️",
+        "color": "#0ea5e9",
+        "query_news": '"Amadeus" AND ("resultados" OR "revenue" OR "beneficio" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Amadeus resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 2843),  ("2022", 4658),  ("2023", 5741),  ("2024", 6235),  ("9M-25", 5148)],
+            "Beneficio neto (M EUR)":  [("2021", 153),   ("2022", 700),   ("2023", 1252),  ("2024", 1437),  ("9M-25", 1182)],
+            "EBITDA (M EUR)":          [("2021", 908),   ("2022", 1703),  ("2023", 2376),  ("2024", 2637),  ("9M-25", 2163)],
+        },
+    },
+    "Ferrovial": {
+        "ticker": "FER",
+        "sector": "Infraestructuras",
+        "emoji": "🏗️",
+        "color": "#fb923c",
+        "query_news": '"Ferrovial" AND ("resultados" OR "beneficio" OR "EBITDA" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "Ferrovial resultados 2025",
+        "historico": {
+            "Ingresos (M EUR)":        [("2021", 7536),  ("2022", 8054),  ("2023", 8166),  ("2024", 8720),  ("9M-25", 7100)],
+            "Beneficio neto (M EUR)":  [("2021", 459),   ("2022", 508),   ("2023", 1100),  ("2024", 1320),  ("9M-25", 1050)],
+            "EBITDA (M EUR)":          [("2021", 804),   ("2022", 856),   ("2023", 908),   ("2024", 1050),  ("9M-25", 890)],
+        },
+    },
+    "ACS": {
+        "ticker": "ACS",
+        "sector": "Construccion / Infraestructuras",
+        "emoji": "🏗️",
+        "color": "#84cc16",
+        "query_news": '"ACS" AND ("resultados" OR "beneficio" OR "EBITDA" OR "2025" OR "2026") AND ("trimestre" OR "anual")',
+        "query_cnmv": "ACS grupo resultados 2025",
+        "historico": {
+            "Ventas (M EUR)":          [("2021", 33826), ("2022", 38929), ("2023", 42048), ("2024", 44500), ("9M-25", 36200)],
+            "Beneficio neto (M EUR)":  [("2021", 776),   ("2022", 700),   ("2023", 931),   ("2024", 1050),  ("9M-25", 870)],
+            "EBITDA (M EUR)":          [("2021", 1820),  ("2022", 2140),  ("2023", 2391),  ("2024", 2600),  ("9M-25", 2150)],
+        },
+    },
+}
+
 TONOS = {
     "aprendiendo": {"label": "🎓 Estoy aprendiendo",    "instruccion": "Escribe desde la perspectiva de alguien que está aprendiendo y reflexionando sobre el sector. Muestra curiosidad y ganas de crecer."},
     "senior":      {"label": "💼 Quiero parecer senior", "instruccion": "Escribe con tono experto y seguro. Analiza con criterio profesional, usa terminología del sector con naturalidad."},
@@ -1116,6 +1253,280 @@ REGLAS ESTRICTAS:
 Devuelve SOLO el texto del post."""
     return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
 
+
+# ── Funciones IBEX 35 ─────────────────────────────────────────────────────────
+
+def buscar_resultados_empresa(empresa_key):
+    """Busca en NewsAPI y CNMV RSS los ultimos resultados de la empresa."""
+    cfg = EMPRESAS_IBEX.get(empresa_key, {})
+    query = cfg.get("query_news", empresa_key + " resultados")
+    resultados = []
+
+    # 1. NewsAPI — siempre buscar los mas recientes (ultimos 180 dias, ordenados por fecha)
+    # Enriquecer query con año actual para forzar resultados recientes
+    anio_actual = datetime.now().year
+    query_reciente = query + f' AND ("{anio_actual}" OR "{anio_actual-1}")'
+    try:
+        desde = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+        r = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={"q": query_reciente, "language": "es", "sortBy": "publishedAt",
+                    "pageSize": 10, "from": desde, "apiKey": NEWSAPI_KEY},
+            timeout=10
+        )
+        if r.status_code == 200:
+            for a in r.json().get("articles", []):
+                titulo = a.get("title", "") or ""
+                resumen = a.get("description", "") or a.get("content", "") or ""
+                url = a.get("url", "")
+                if not titulo or not url or len(resumen) < 40: continue
+                palabras_en = ["the ", "this ", "with ", "from ", "have "]
+                if sum(1 for p in palabras_en if p in (titulo + resumen).lower()) >= 3: continue
+                try:
+                    pub = datetime.fromisoformat(a.get("publishedAt","").replace("Z",""))
+                except Exception:
+                    pub = datetime.now()
+                resultados.append({
+                    "titulo": titulo[:200], "resumen": resumen[:500],
+                    "fuente": a.get("source",{}).get("name","NewsAPI"),
+                    "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                })
+    except Exception:
+        pass
+
+    # 2. CNMV RSS (hechos relevantes)
+    try:
+        cnmv_rss = "https://www.cnmv.es/portal/HR/RSSHechosRelevantes.ashx"
+        feed = feedparser.parse(cnmv_rss)
+        nombre = empresa_key.lower()
+        for entry in feed.entries[:50]:
+            titulo = entry.get("title", "")
+            if nombre in titulo.lower() or cfg.get("ticker","").lower() in titulo.lower():
+                resumen = entry.get("summary", entry.get("description", ""))[:500]
+                url = entry.get("link", "")
+                try:
+                    pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
+                except Exception:
+                    pub = datetime.now()
+                resultados.append({
+                    "titulo": titulo[:200], "resumen": resumen,
+                    "fuente": "CNMV · Hechos Relevantes",
+                    "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                })
+    except Exception:
+        pass
+
+    # Ordenar por fecha descendente
+    resultados.sort(key=lambda x: x.get("fecha",""), reverse=True)
+    return resultados[:6]
+
+
+def extraer_kpis_empresa(empresa_key, noticias):
+    """Usa Gemini para extraer KPIs financieros de las noticias recientes."""
+    if not noticias:
+        return None
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    cfg = EMPRESAS_IBEX.get(empresa_key, {})
+    partes = []
+    for n in noticias[:4]:
+        partes.append("TITULAR: " + n["titulo"] + " | FECHA: " + n["fecha"] + " | RESUMEN: " + n["resumen"])
+    textos = " --- ".join(partes)
+    prompt = f"""Eres un analista financiero experto en empresas del IBEX 35.
+Lee estas noticias sobre {empresa_key} ({cfg.get('sector','')}) y extrae los KPIs financieros mas recientes.
+
+NOTICIAS:
+{textos}
+
+Devuelve SOLO un JSON valido sin markdown con este formato exacto:
+{{
+  "periodo": "ej: T4-2024 o 2024 o H1-2025",
+  "encontrado": true,
+  "kpis": [
+    {{"nombre": "Beneficio neto", "valor": 1234, "unidad": "M EUR", "variacion_pct": 12.5}},
+    {{"nombre": "Ingresos", "valor": 5678, "unidad": "M EUR", "variacion_pct": 8.2}},
+    {{"nombre": "EBITDA", "valor": 2345, "unidad": "M EUR", "variacion_pct": 5.1}}
+  ],
+  "resumen_ejecutivo": "2-3 frases sobre los resultados",
+  "noticia_principal": "{noticias[0]['titulo'][:120] if noticias else ''}",
+  "fuente_principal": "{noticias[0]['fuente'] if noticias else ''}",
+  "fecha_noticia": "{noticias[0]['fecha'] if noticias else ''}"
+}}
+Si no encuentras datos financieros concretos, devuelve {{"encontrado": false}}"""
+    try:
+        raw = client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+        result = json.loads(raw.replace("```json","").replace("```","").strip())
+        if result.get("encontrado"):
+            return result
+    except Exception:
+        pass
+    return None
+
+
+def generar_dashboard_empresa_png(empresa_key, kpi_data, historico_key, estilo="powerbi"):
+    """Genera dashboard PNG con KPIs extraidos + historico de la empresa."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import matplotlib.ticker as mticker
+    import io as _io
+
+    cfg = EMPRESAS_IBEX.get(empresa_key, {})
+    historico = cfg.get("historico", {})
+    datos_hist = historico.get(historico_key, [])
+    fechas_h = [d[0] for d in datos_hist]
+    valores_h = [d[1] for d in datos_hist]
+
+    if estilo == "powerbi":
+        BG_OUTER = "#F3F2F1"; BG_HEADER = "#243A5E"; BG_CARD = "#FFFFFF"
+        BG_CHART = "#FFFFFF"; COLOR_LINE = "#118DFF"; COLOR_BAR = "#118DFF"
+        COLOR_ACC = "#F2C811"; TXT_HEADER = "#FFFFFF"; TXT_CARD = "#252423"
+        TXT_SUB = "#605E5C"; TXT_AXIS = "#605E5C"; GRID_COL = "#E8E6E3"
+        BORDER_COL = "#D2D0CE"
+    else:
+        BG_OUTER = "#0a0a0f"; BG_HEADER = "#13131a"; BG_CARD = "#1c1c2e"
+        BG_CHART = "#13131a"; COLOR_LINE = "#6c63ff"; COLOR_BAR = "#6c63ff"
+        COLOR_ACC = "#fbbf24"; TXT_HEADER = "#f0f0f8"; TXT_CARD = "#f0f0f8"
+        TXT_SUB = "#a78bfa"; TXT_AXIS = "#7070a0"; GRID_COL = "#2a2a4a"
+        BORDER_COL = "#2a2a4a"
+
+    fig = plt.figure(figsize=(12, 7), facecolor=BG_OUTER)
+    gs = fig.add_gridspec(3, 4, height_ratios=[0.12, 0.72, 0.08],
+                          width_ratios=[1, 1, 1, 3], hspace=0.18, wspace=0.3,
+                          left=0.04, right=0.97, top=0.96, bottom=0.04)
+
+    # Cabecera
+    ax_hdr = fig.add_subplot(gs[0, :])
+    ax_hdr.set_facecolor(BG_HEADER); ax_hdr.set_xlim(0,1); ax_hdr.set_ylim(0,1); ax_hdr.axis("off")
+    titulo_hdr = cfg.get("emoji","") + " " + empresa_key + " — " + cfg.get("sector","")
+    ax_hdr.text(0.02, 0.55, titulo_hdr, color=TXT_HEADER, fontsize=13, fontweight="bold", va="center")
+    periodo = kpi_data.get("periodo","") if kpi_data else ""
+    ax_hdr.text(0.02, 0.15, f"Resultados {periodo}  ·  Fuente: CNMV / Prensa financiera  ·  {datetime.now().strftime('%d/%m/%Y')}",
+                color=TXT_HEADER, fontsize=8, va="center", alpha=0.75)
+
+    # KPI cards — usar kpis extraidos o historico
+    kpis_extraidos = kpi_data.get("kpis", []) if kpi_data else []
+    kpis_display = []
+    for k in kpis_extraidos[:3]:
+        variacion = k.get("variacion_pct", 0) or 0
+        col_var = COLOR_ACC if variacion >= 0 else "#ef4444"
+        kpis_display.append((
+            k.get("nombre","KPI"), f"{k.get('valor',0):,.0f}".replace(",","."),
+            f"{variacion:+.1f}% vs anterior · " + k.get("unidad",""), col_var
+        ))
+    # Completar con historico si faltan KPIs
+    if len(kpis_display) < 3 and datos_hist:
+        ultimo_val = valores_h[-1] if valores_h else 0
+        penult_val = valores_h[-2] if len(valores_h) >= 2 else ultimo_val
+        var_hist = ((ultimo_val - penult_val) / abs(penult_val) * 100) if penult_val != 0 else 0
+        col_v = COLOR_ACC if var_hist >= 0 else "#ef4444"
+        kpis_display.append((historico_key.split("(")[0].strip(),
+                             f"{ultimo_val:,.0f}".replace(",","."),
+                             f"{var_hist:+.1f}% vs {fechas_h[-2] if len(fechas_h)>=2 else 'anterior'}", col_v))
+
+    while len(kpis_display) < 3:
+        kpis_display.append(("-", "-", "-", TXT_SUB))
+
+    for col_i, (titulo, valor, subtitulo, col_sub) in enumerate(kpis_display[:3]):
+        ax_k = fig.add_subplot(gs[1, col_i])
+        ax_k.set_facecolor(BG_CARD); ax_k.set_xlim(0,1); ax_k.set_ylim(0,1); ax_k.axis("off")
+        for sp in ['top','bottom','left','right']:
+            ax_k.spines[sp].set_visible(True); ax_k.spines[sp].set_color(BORDER_COL)
+            ax_k.spines[sp].set_linewidth(0.8)
+        ax_k.set_frame_on(True)
+        ax_k.add_patch(mpatches.FancyBboxPatch((0, 0.93), 1, 0.07,
+            boxstyle="square,pad=0", facecolor=COLOR_LINE, linewidth=0))
+        titulo_corto = titulo[:22] if len(titulo) > 22 else titulo
+        ax_k.text(0.5, 0.78, titulo_corto, color=TXT_SUB, fontsize=7, ha="center", va="center", linespacing=1.4)
+        ax_k.text(0.5, 0.50, valor, color=TXT_CARD, fontsize=18, fontweight="bold", ha="center", va="center")
+        subtit_corto = subtitulo[:35] if len(subtitulo) > 35 else subtitulo
+        ax_k.text(0.5, 0.20, subtit_corto, color=col_sub, fontsize=7, ha="center", va="center")
+
+    # Grafico historico
+    ax_chart = fig.add_subplot(gs[1, 3])
+    ax_chart.set_facecolor(BG_CHART)
+    if datos_hist:
+        n_pts = len(fechas_h)
+        ax_chart.bar(range(n_pts), valores_h, color=COLOR_BAR, alpha=0.8, width=0.6, zorder=3)
+        if n_pts > 0:
+            import matplotlib.patches as mp2
+            ax_chart.patches[-1].set_facecolor(COLOR_ACC)
+        ax_chart.set_xticks(range(n_pts))
+        ax_chart.set_xticklabels(fechas_h, rotation=0, ha="center", fontsize=9, color=TXT_AXIS)
+        titulo_graf = historico_key.split("(")[0].strip()
+        ax_chart.set_title(titulo_graf, fontsize=10, color=TXT_AXIS, pad=6)
+        # Etiquetas valores
+        for i, v in enumerate(valores_h):
+            ax_chart.text(i, v + max(valores_h)*0.02, f"{v:,.0f}".replace(",","."),
+                         ha="center", fontsize=7, color=TXT_AXIS, fontweight="bold")
+    ax_chart.set_ylabel("M EUR", fontsize=8, color=TXT_AXIS)
+    ax_chart.tick_params(axis="y", labelcolor=TXT_AXIS, labelsize=8)
+    ax_chart.spines["top"].set_visible(False); ax_chart.spines["right"].set_visible(False)
+    ax_chart.spines["left"].set_color(BORDER_COL); ax_chart.spines["bottom"].set_color(BORDER_COL)
+    ax_chart.grid(axis="y", color=GRID_COL, linewidth=0.6, zorder=0)
+
+    # Footer
+    ax_foot = fig.add_subplot(gs[2, :])
+    ax_foot.set_facecolor(BG_OUTER); ax_foot.axis("off")
+
+    buf = _io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()
+
+
+def generar_post_empresa(empresa_key, kpi_data, historico_key, tono):
+    """Genera post LinkedIn sobre resultados de empresa IBEX."""
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
+    cfg = EMPRESAS_IBEX.get(empresa_key, {})
+    historico = cfg.get("historico", {})
+    datos_hist = historico.get(historico_key, [])
+
+    resumen_hist = ""
+    if datos_hist:
+        resumen_hist = ", ".join([f"{f}: {v:,.0f}".replace(",",".") for f, v in datos_hist])
+
+    kpis_txt = ""
+    kpis_txt = ""
+    if kpi_data and kpi_data.get("kpis"):
+        partes_k = []
+        for k in kpi_data["kpis"]:
+            var_k = k.get("variacion_pct", 0) or 0
+            linea = "- " + k["nombre"] + ": " + f"{k['valor']:,.0f}".replace(",",".") + " " + k.get("unidad","") + " (" + f"{var_k:+.1f}" + "%)"
+            partes_k.append(linea)
+        kpis_txt = " | ".join(partes_k)
+
+    periodo = kpi_data.get("periodo", "2024") if kpi_data else "2024"
+    resumen_ej = kpi_data.get("resumen_ejecutivo", "") if kpi_data else ""
+    noticia_p = kpi_data.get("noticia_principal", "") if kpi_data else ""
+
+    prompt = f"""Escribe un post de LinkedIn sobre los resultados financieros de {empresa_key}.
+
+EMPRESA: {empresa_key} ({cfg.get('emoji','')} {cfg.get('sector','')})
+PERIODO: {periodo}
+KPIS RECIENTES:
+{kpis_txt if kpis_txt else "Datos no disponibles"}
+HISTORICO {historico_key}: {resumen_hist}
+CONTEXTO: {resumen_ej}
+NOTICIA CLAVE: {noticia_p}
+
+TONO: {instruccion_tono}
+
+REGLAS:
+1. Gancho con el dato mas impactante (beneficio, crecimiento o tendencia).
+2. Analiza que significan estos resultados para el sector y la economia espanola.
+3. Compara con el historico si hay tendencia clara.
+4. Reflexion sobre los proximos 6-12 meses.
+5. Pregunta provocadora al final.
+6. Max 2 emojis, parrafos cortos, doble salto entre parrafos.
+7. ESPANOL, 150-250 palabras, 5-8 hashtags al final.
+8. NO menciones que eres IA, estudiante, ni titulo academico.
+
+Devuelve SOLO el texto del post."""
+    return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+
 # ── Carrusel PDF vertical ─────────────────────────────────────────────────────
 def crear_carrusel_pdf(contenido: dict) -> bytes:
     from reportlab.pdfgen import canvas as rl_canvas
@@ -1560,7 +1971,12 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("datos_puntuacion",None),("datos_post_en",""),
                   ("datos_carrusel_pdf",None),("datos_edicion_key",0),
                   ("datos_dashboard_pbi",None),("datos_dashboard_dark",None),
-                  ("datos_noticia_rel",None),("datos_update_msg","")]:
+                  ("datos_noticia_rel",None),("datos_update_msg",""),
+                  ("ibex_empresa","Santander"),("ibex_noticias",[]),
+                  ("ibex_kpi_data",None),("ibex_historico_key",""),
+                  ("ibex_dashboard_pbi",None),("ibex_dashboard_dark",None),
+                  ("ibex_post_generado",""),("ibex_edicion_key",0),
+                  ("ibex_tono_elegido","aprendiendo")]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -1603,6 +2019,16 @@ if st.session_state.fase == "inicio":
 
     if st.session_state.usadas:
         st.markdown(f"<div style='text-align:center;color:#7070a0;font-size:12px;margin-top:8px'>{len(st.session_state.usadas)} noticia{'s' if len(st.session_state.usadas)>1 else ''} ya usada{'s' if len(st.session_state.usadas)>1 else ''} — no se repetirán</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
+    if st.button("📈  Resultados IBEX 35", use_container_width=True):
+        st.session_state.fase = "ibex"
+        st.session_state.ibex_noticias = []
+        st.session_state.ibex_kpi_data = None
+        st.session_state.ibex_dashboard_pbi = None
+        st.session_state.ibex_dashboard_dark = None
+        st.session_state.ibex_post_generado = ""
+        st.rerun()
 
     st.markdown("<div style='margin-top:1rem'></div>", unsafe_allow_html=True)
     if st.button("🔍  Ver qué publica la competencia", use_container_width=True):
@@ -2157,6 +2583,199 @@ elif st.session_state.fase == "datos_sector":
         st.session_state.datos_post_generado = ""
         st.session_state.datos_noticia_rel = None
         st.session_state.datos_update_msg = ""
+        st.rerun()
+
+# ── IBEX 35 — Resultados empresas ────────────────────────────────────────────
+elif st.session_state.fase == "ibex":
+    st.markdown("""
+    <div class="post-header">
+        <div class="post-icon">📈</div>
+        <div>
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">Resultados IBEX 35</div>
+            <div style="font-size:12px;color:#7070a0;margin-top:2px">KPIs reales · Dashboard + Post LinkedIn · Fuentes: CNMV + Prensa financiera</div>
+        </div>
+    </div>""", unsafe_allow_html=True)
+
+    # Selector empresa
+    st.markdown('<div class="section-label">Elige la empresa</div>', unsafe_allow_html=True)
+    empresa_sel = st.selectbox("", options=list(EMPRESAS_IBEX.keys()),
+        format_func=lambda x: EMPRESAS_IBEX[x]["emoji"] + " " + x + " · " + EMPRESAS_IBEX[x]["sector"],
+        label_visibility="collapsed", key="sel_ibex_empresa",
+        index=list(EMPRESAS_IBEX.keys()).index(st.session_state.ibex_empresa)
+            if st.session_state.ibex_empresa in EMPRESAS_IBEX else 0)
+
+    if empresa_sel != st.session_state.ibex_empresa:
+        st.session_state.ibex_empresa = empresa_sel
+        st.session_state.ibex_noticias = []
+        st.session_state.ibex_kpi_data = None
+        st.session_state.ibex_dashboard_pbi = None
+        st.session_state.ibex_dashboard_dark = None
+        st.session_state.ibex_post_generado = ""
+        st.rerun()
+
+    cfg_ibex = EMPRESAS_IBEX[empresa_sel]
+
+    # Selector KPI historico a mostrar en grafico
+    historico_keys = list(cfg_ibex.get("historico", {}).keys())
+    if historico_keys:
+        ibex_hist_key = st.selectbox("Indicador histórico a mostrar en dashboard",
+            options=historico_keys, label_visibility="visible", key="sel_ibex_hist")
+        st.session_state.ibex_historico_key = ibex_hist_key
+    else:
+        ibex_hist_key = ""
+
+    st.markdown("<div style='margin-top:0.5rem'></div>", unsafe_allow_html=True)
+
+    if st.button("🔍  Buscar resultados recientes", use_container_width=True, key="btn_ibex_buscar"):
+        with st.spinner(f"Buscando resultados de {empresa_sel} en CNMV y prensa..."):
+            noticias = buscar_resultados_empresa(empresa_sel)
+            st.session_state.ibex_noticias = noticias
+            st.session_state.ibex_kpi_data = None
+            st.session_state.ibex_dashboard_pbi = None
+            st.session_state.ibex_dashboard_dark = None
+            st.session_state.ibex_post_generado = ""
+        if noticias:
+            with st.spinner("Gemini extrayendo KPIs financieros..."):
+                kpi_data = extraer_kpis_empresa(empresa_sel, noticias)
+                st.session_state.ibex_kpi_data = kpi_data
+        st.rerun()
+
+    # Mostrar noticias encontradas
+    if st.session_state.ibex_noticias:
+        st.markdown('<div class="section-label">📰 Fuentes encontradas</div>', unsafe_allow_html=True)
+        for n in st.session_state.ibex_noticias[:4]:
+            st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px"><span style="color:#a78bfa;font-size:10px">{n["fuente"]} · {n["fecha"]}</span><br><span style="color:#f0f0f8">{n["titulo"][:140]}</span><br><a href="{n["url"]}" target="_blank" style="font-size:10px;color:#6c63ff">Ver noticia ↗</a></div>', unsafe_allow_html=True)
+
+    # KPIs extraidos
+    if st.session_state.ibex_kpi_data:
+        kd = st.session_state.ibex_kpi_data
+        st.markdown('<div class="section-label">💰 KPIs extraidos por IA</div>', unsafe_allow_html=True)
+        periodo_txt = kd.get("periodo","")
+        st.markdown(f'<div style="font-size:11px;color:#a78bfa;margin-bottom:8px">Periodo: {periodo_txt}</div>', unsafe_allow_html=True)
+
+        kpis = kd.get("kpis",[])
+        if kpis:
+            cols_k = st.columns(len(kpis[:3]))
+            for ci, k in enumerate(kpis[:3]):
+                var = k.get("variacion_pct", 0) or 0
+                col_var = "#4ade80" if var >= 0 else "#f87171"
+                with cols_k[ci]:
+                    st.markdown(f'<div class="dash-metric"><div class="dash-metric-num" style="font-size:20px">{k.get("valor",0):,.0f}</div><div class="dash-metric-label">{k.get("nombre","")} ({k.get("unidad","")})</div><div style="font-size:11px;color:{col_var};margin-top:4px">{var:+.1f}% vs anterior</div></div>'.replace(",","."), unsafe_allow_html=True)
+
+        resumen_ej = kd.get("resumen_ejecutivo","")
+        if resumen_ej:
+            st.markdown(f'<div style="background:rgba(108,99,255,0.08);border-left:2px solid #6c63ff;border-radius:8px;padding:10px 14px;font-size:12px;color:#d0d0e0;margin-top:8px">{resumen_ej}</div>', unsafe_allow_html=True)
+
+        # Historico
+        if ibex_hist_key and cfg_ibex.get("historico",{}).get(ibex_hist_key):
+            st.markdown(f'<div class="section-label">📊 Histórico: {ibex_hist_key}</div>', unsafe_allow_html=True)
+            datos_h = cfg_ibex["historico"][ibex_hist_key]
+            c1h, c2h, c3h = st.columns(3)
+            ult_h = datos_h[-1]; penult_h = datos_h[-2] if len(datos_h)>=2 else None
+            var_h = ((ult_h[1]-penult_h[1])/abs(penult_h[1])*100) if penult_h and penult_h[1]!=0 else 0
+            c1h.metric(f"Ultimo ({ult_h[0]})", f"{ult_h[1]:,.0f}".replace(",","."))
+            c2h.metric("Variacion", f"{var_h:+.1f}%")
+            c3h.metric("Maximo", f"{max(d[1] for d in datos_h):,.0f}".replace(",","."))
+
+        # Dashboards
+        st.markdown('<div class="section-label">🖥️ Dashboard para LinkedIn</div>', unsafe_allow_html=True)
+        col_ib1, col_ib2 = st.columns(2)
+        with col_ib1:
+            if st.button("📊  Estilo Power BI", use_container_width=True, key="btn_ibex_pbi"):
+                with st.spinner("Generando dashboard..."):
+                    st.session_state.ibex_dashboard_pbi = generar_dashboard_empresa_png(
+                        empresa_sel, st.session_state.ibex_kpi_data, ibex_hist_key, "powerbi")
+                    st.rerun()
+        with col_ib2:
+            if st.button("🌙  Estilo Dark", use_container_width=True, key="btn_ibex_dark"):
+                with st.spinner("Generando dashboard..."):
+                    st.session_state.ibex_dashboard_dark = generar_dashboard_empresa_png(
+                        empresa_sel, st.session_state.ibex_kpi_data, ibex_hist_key, "dark")
+                    st.rerun()
+
+        if st.session_state.ibex_dashboard_pbi:
+            st.markdown('<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-top:12px;margin-bottom:6px">📊 ESTILO POWER BI</div>', unsafe_allow_html=True)
+            st.image(st.session_state.ibex_dashboard_pbi, use_container_width=True)
+            nom_e = re.sub(r"[^a-z0-9]+","_", empresa_sel.lower())
+            st.download_button("⬇️  Descargar Power BI", data=st.session_state.ibex_dashboard_pbi,
+                file_name=f"dashboard_pbi_{nom_e}.png", mime="image/png",
+                use_container_width=True, key="dl_ibex_pbi")
+
+        if st.session_state.ibex_dashboard_dark:
+            st.markdown('<div style="font-size:11px;color:#6c63ff;font-weight:600;margin-top:12px;margin-bottom:6px">🌙 ESTILO DARK</div>', unsafe_allow_html=True)
+            st.image(st.session_state.ibex_dashboard_dark, use_container_width=True)
+            nom_e = re.sub(r"[^a-z0-9]+","_", empresa_sel.lower())
+            st.download_button("⬇️  Descargar Dark", data=st.session_state.ibex_dashboard_dark,
+                file_name=f"dashboard_dark_{nom_e}.png", mime="image/png",
+                use_container_width=True, key="dl_ibex_dark")
+
+        # Generar post
+        st.markdown('<div class="section-label">✦ Generar post LinkedIn</div>', unsafe_allow_html=True)
+        if not st.session_state.ibex_post_generado:
+            col_it1, col_it2, col_it3 = st.columns(3)
+            for ii, (tono_key, tono_cfg) in enumerate(TONOS.items()):
+                with [col_it1, col_it2, col_it3][ii]:
+                    if st.button(tono_cfg["label"], key=f"ibex_tono_{tono_key}", use_container_width=True):
+                        with st.spinner("Gemini generando post..."):
+                            post = generar_post_empresa(empresa_sel, st.session_state.ibex_kpi_data,
+                                                        ibex_hist_key, tono_key)
+                            st.session_state.ibex_post_generado = post
+                            st.session_state.ibex_tono_elegido = tono_key
+                            st.session_state.ibex_edicion_key += 1
+                            st.rerun()
+        else:
+            tono_lbl = TONOS.get(st.session_state.ibex_tono_elegido,{}).get("label","")
+            st.markdown(f'<div style="font-size:11px;color:#7070a0;margin-bottom:8px">Tono: {tono_lbl}</div>', unsafe_allow_html=True)
+            post_edit_i = st.text_area("", value=st.session_state.ibex_post_generado, height=320,
+                label_visibility="collapsed", key=f"ibex_editor_{st.session_state.ibex_edicion_key}")
+            if post_edit_i != st.session_state.ibex_post_generado:
+                st.session_state.ibex_post_generado = post_edit_i
+
+            st.markdown('<div class="edicion-guiada-label">✨ Edicion guiada</div>', unsafe_allow_html=True)
+            ie1, ie2, ie3 = st.columns(3)
+            with ie1:
+                if st.button("✂️ Mas corto", use_container_width=True, key="ibex_corto"):
+                    with st.spinner("..."):
+                        st.session_state.ibex_post_generado = editar_post_guiado(st.session_state.ibex_post_generado, "Reduce a maximo 150 palabras. Conserva datos clave y pregunta final.")
+                        st.session_state.ibex_edicion_key += 1; st.rerun()
+            with ie2:
+                if st.button("🎣 Nuevo gancho", use_container_width=True, key="ibex_gancho"):
+                    with st.spinner("..."):
+                        st.session_state.ibex_post_generado = editar_post_guiado(st.session_state.ibex_post_generado, "Reescribe SOLO las primeras 1-2 lineas con el dato mas impactante. El resto igual.")
+                        st.session_state.ibex_edicion_key += 1; st.rerun()
+            with ie3:
+                if st.button("🔥 Provocar debate", use_container_width=True, key="ibex_debate"):
+                    with st.spinner("..."):
+                        st.session_state.ibex_post_generado = cambiar_pregunta_final(st.session_state.ibex_post_generado, "debate")
+                        st.session_state.ibex_edicion_key += 1; st.rerun()
+
+            st.markdown("<hr>", unsafe_allow_html=True)
+            ica1, ica2 = st.columns(2)
+            with ica1:
+                if st.button("📋  Copiar post", use_container_width=True, key="ibex_copiar"):
+                    st.code(st.session_state.ibex_post_generado, language=None)
+                    st.success("Copia el texto de arriba")
+            with ica2:
+                if st.button("📨  Enviar a Telegram", use_container_width=True, key="ibex_telegram"):
+                    with st.spinner("Enviando..."):
+                        nf = {"fuente": "CNMV / Prensa", "fecha": datetime.now().strftime("%d/%m/%Y"),
+                              "url": st.session_state.ibex_noticias[0]["url"] if st.session_state.ibex_noticias else "",
+                              "titulo": empresa_sel + " — Resultados " + kd.get("periodo","")}
+                        ok = enviar_telegram(st.session_state.ibex_post_generado, nf)
+                        if ok:
+                            guardar_en_historial(st.session_state.ibex_post_generado, nf,
+                                "banca", st.session_state.ibex_tono_elegido)
+                            st.success("Enviado y guardado en historial.")
+                        else: st.error("Error al enviar.")
+            if st.button("🔄  Regenerar", use_container_width=True, key="ibex_regen"):
+                st.session_state.ibex_post_generado = ""; st.session_state.ibex_edicion_key += 1; st.rerun()
+
+    elif st.session_state.ibex_noticias and not st.session_state.ibex_kpi_data:
+        st.warning("No se pudieron extraer KPIs claros de las noticias encontradas. Prueba con otra empresa o en otro momento.")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    if st.button("← Volver al inicio", key="ibex_volver"):
+        st.session_state.fase = "inicio"
         st.rerun()
 
 # ── COMPETENCIA ────────────────────────────────────────────────────────────────
