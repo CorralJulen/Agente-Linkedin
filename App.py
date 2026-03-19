@@ -1257,54 +1257,52 @@ Devuelve SOLO el texto del post."""
 # ── Funciones IBEX 35 ─────────────────────────────────────────────────────────
 
 def buscar_resultados_empresa(empresa_key):
-    """Busca resultados financieros de la empresa en: RSS prensa, CNMV y NewsAPI."""
+    """Busca resultados financieros via Google News RSS (principal) + CNMV + NewsAPI."""
     cfg = EMPRESAS_IBEX.get(empresa_key, {})
     ticker = cfg.get("ticker", "")
     anio_actual = datetime.now().year
     resultados = []
-
-    # 1. RSS prensa financiera española — fuentes directas, sin límite de plan
-    RSS_FINANCIERO = [
-        ("Expansión - Empresas",    "https://e00-expansion.uecdn.es/rss/empresas.xml"),
-        ("Expansión - Mercados",    "https://e00-expansion.uecdn.es/rss/mercados.xml"),
-        ("El Economista - Empresas","https://www.eleconomista.es/rss/rss-empresas.php"),
-        ("El Economista - Banca",   "https://www.eleconomista.es/rss/rss-banca.php"),
-        ("Cinco Días",              "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
-        ("El Confidencial - Empresas","https://www.elconfidencial.com/rss/empresas/"),
-    ]
     nombre_lower = empresa_key.lower()
     ticker_lower = ticker.lower()
-    keywords_res = ["resultado", "beneficio", "ganancia", "facturación", "ventas", "trimestre", "semestre", "anual", "ebitda", "ingreso"]
-    hace_180 = datetime.now() - timedelta(days=180)
-    for fuente, url_rss in RSS_FINANCIERO:
+    hace_365 = datetime.now() - timedelta(days=365)
+
+    # 1. Google News RSS — sin limitaciones, indexa prensa española en tiempo real
+    # Varias queries para maximizar cobertura
+    google_queries = [
+        f"{empresa_key} resultados {anio_actual}",
+        f"{empresa_key} beneficio {anio_actual}",
+        f"{empresa_key} resultados {anio_actual - 1}",
+    ]
+    for q in google_queries:
         try:
-            feed = feedparser.parse(url_rss)
-            for entry in feed.entries[:20]:
+            import urllib.parse
+            q_enc = urllib.parse.quote(q)
+            url_gnews = f"https://news.google.com/rss/search?q={q_enc}&hl=es&gl=ES&ceid=ES:es"
+            feed = feedparser.parse(url_gnews)
+            for entry in feed.entries[:10]:
                 titulo = entry.get("title", "") or ""
                 resumen = entry.get("summary", entry.get("description", ""))[:500] or ""
-                titulo_lower = titulo.lower()
-                # Debe mencionar la empresa Y alguna keyword de resultados
-                if (nombre_lower not in titulo_lower and ticker_lower not in titulo_lower):
-                    continue
-                if not any(kw in titulo_lower or kw in resumen.lower() for kw in keywords_res):
-                    continue
+                url_art = entry.get("link", "")
+                if not titulo or not url_art: continue
                 try:
                     pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
                 except Exception:
                     pub = datetime.now()
-                if pub < hace_180:
-                    continue
-                url = entry.get("link", "")
+                if pub < hace_365: continue
+                # Limpiar HTML del resumen de Google News
+                resumen_limpio = re.sub(r'<[^>]+>', '', resumen).strip()[:500]
                 resultados.append({
-                    "titulo": titulo[:200], "resumen": resumen,
-                    "fuente": fuente, "url": url,
+                    "titulo": titulo[:200],
+                    "resumen": resumen_limpio if len(resumen_limpio) > 30 else titulo,
+                    "fuente": "Google News",
+                    "url": url_art,
                     "fecha": pub.strftime("%d/%m/%Y"),
                     "_ts": pub,
                 })
         except Exception:
             pass
 
-    # 2. CNMV RSS — hechos relevantes oficiales
+    # 2. CNMV RSS — hechos relevantes oficiales (siempre intentar)
     try:
         feed = feedparser.parse("https://www.cnmv.es/portal/HR/RSSHechosRelevantes.ashx")
         for entry in feed.entries[:60]:
@@ -1312,7 +1310,7 @@ def buscar_resultados_empresa(empresa_key):
             if nombre_lower not in titulo.lower() and ticker_lower not in titulo.lower():
                 continue
             resumen = entry.get("summary", entry.get("description", ""))[:500]
-            url = entry.get("link", "")
+            url_art = entry.get("link", "")
             try:
                 pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
             except Exception:
@@ -1320,28 +1318,58 @@ def buscar_resultados_empresa(empresa_key):
             resultados.append({
                 "titulo": titulo[:200], "resumen": resumen,
                 "fuente": "CNMV · Hechos Relevantes",
-                "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                "url": url_art, "fecha": pub.strftime("%d/%m/%Y"),
                 "_ts": pub,
             })
     except Exception:
         pass
 
-    # 3. NewsAPI — query simple sin AND anidados (más compatible con plan básico)
+    # 3. RSS prensa financiera — búsqueda por nombre en titulares recientes
+    RSS_FINANCIERO = [
+        ("Expansión",   "https://e00-expansion.uecdn.es/rss/empresas.xml"),
+        ("El Economista","https://www.eleconomista.es/rss/rss-empresas.php"),
+        ("Cinco Días",  "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
+    ]
+    keywords_res = ["resultado", "beneficio", "ganancia", "ventas", "trimestre", "ebitda", "ingreso", "facturación"]
+    for fuente, url_rss in RSS_FINANCIERO:
+        try:
+            feed = feedparser.parse(url_rss)
+            for entry in feed.entries[:30]:
+                titulo = entry.get("title", "") or ""
+                resumen = entry.get("summary", entry.get("description", ""))[:500] or ""
+                t_lower = titulo.lower()
+                if nombre_lower not in t_lower and ticker_lower not in t_lower:
+                    continue
+                # Relajar filtro: basta con que mencione la empresa
+                url_art = entry.get("link", "")
+                try:
+                    pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
+                except Exception:
+                    pub = datetime.now()
+                resultados.append({
+                    "titulo": titulo[:200], "resumen": resumen,
+                    "fuente": fuente, "url": url_art,
+                    "fecha": pub.strftime("%d/%m/%Y"),
+                    "_ts": pub,
+                })
+        except Exception:
+            pass
+
+    # 4. NewsAPI — query simple, sin fecha para maximizar resultados en plan free
     try:
-        query_simple = f'"{empresa_key}" resultados {anio_actual}'
-        desde = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        query_simple = f"{empresa_key} resultados beneficio"
         r = requests.get(
             "https://newsapi.org/v2/everything",
             params={"q": query_simple, "language": "es", "sortBy": "publishedAt",
-                    "pageSize": 10, "from": desde, "apiKey": NEWSAPI_KEY},
+                    "pageSize": 10, "apiKey": NEWSAPI_KEY},
             timeout=10
         )
         if r.status_code == 200:
             for a in r.json().get("articles", []):
                 titulo = a.get("title", "") or ""
                 resumen = a.get("description", "") or a.get("content", "") or ""
-                url = a.get("url", "")
-                if not titulo or not url or len(resumen) < 40: continue
+                url_art = a.get("url", "")
+                if not titulo or not url_art or len(resumen) < 30: continue
                 palabras_en = ["the ", "this ", "with ", "from ", "have "]
                 if sum(1 for p in palabras_en if p in (titulo + resumen).lower()) >= 3: continue
                 try:
@@ -1351,7 +1379,7 @@ def buscar_resultados_empresa(empresa_key):
                 resultados.append({
                     "titulo": titulo[:200], "resumen": resumen[:500],
                     "fuente": a.get("source",{}).get("name","NewsAPI"),
-                    "url": url, "fecha": pub.strftime("%d/%m/%Y"),
+                    "url": url_art, "fecha": pub.strftime("%d/%m/%Y"),
                     "_ts": pub,
                 })
     except Exception:
@@ -1360,11 +1388,11 @@ def buscar_resultados_empresa(empresa_key):
     # Ordenar por fecha descendente, deduplicar por URL
     vistos = set()
     unicos = []
-    for r in sorted(resultados, key=lambda x: x.get("_ts", datetime.now()), reverse=True):
-        if r["url"] not in vistos:
-            vistos.add(r["url"])
-            r.pop("_ts", None)
-            unicos.append(r)
+    for item in sorted(resultados, key=lambda x: x.get("_ts", datetime.now()), reverse=True):
+        if item["url"] not in vistos:
+            vistos.add(item["url"])
+            item.pop("_ts", None)
+            unicos.append(item)
     return unicos[:8]
 
 
