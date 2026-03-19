@@ -2800,11 +2800,29 @@ elif st.session_state.fase == "ibex":
                 st.session_state.ibex_kpi_data = kpi_data
         st.rerun()
 
-    # Mostrar noticias encontradas
+    # Mostrar noticias encontradas con boton de generar post
     if st.session_state.ibex_noticias:
         st.markdown('<div class="section-label">📰 Fuentes encontradas</div>', unsafe_allow_html=True)
-        for n in st.session_state.ibex_noticias[:4]:
-            st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px"><span style="color:#a78bfa;font-size:10px">{n["fuente"]} · {n["fecha"]}</span><br><span style="color:#f0f0f8">{n["titulo"][:140]}</span><br><a href="{n["url"]}" target="_blank" style="font-size:10px;color:#6c63ff">Ver noticia ↗</a></div>', unsafe_allow_html=True)
+        for ni, n in enumerate(st.session_state.ibex_noticias[:4]):
+            st.markdown(f'<div style="background:#13131a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 12px;margin-bottom:4px;font-size:12px"><span style="color:#a78bfa;font-size:10px">{n["fuente"]} · {n["fecha"]}</span><br><span style="color:#f0f0f8">{n["titulo"][:140]}</span><br><a href="{n["url"]}" target="_blank" style="font-size:10px;color:#6c63ff">Ver noticia ↗</a></div>', unsafe_allow_html=True)
+            if st.button("❖ Generar post desde esta noticia", key=f"ibex_noticia_post_{ni}", use_container_width=True):
+                noticia_adapt = {
+                    "titulo": n["titulo"],
+                    "resumen": n.get("resumen", n["titulo"]),
+                    "fuente": n["fuente"],
+                    "url": n["url"],
+                    "fecha": n["fecha"],
+                    "imagen": "",
+                    "_sector": "banca",
+                }
+                st.session_state.noticia_elegida = noticia_adapt
+                st.session_state.sector_elegido = "banca"
+                st.session_state.fase = "elegir_tono"
+                st.session_state.puntuacion = None
+                st.session_state.post_en = ""
+                st.session_state.carrusel_pdf = None
+                st.rerun()
+            st.markdown("<div style='margin-bottom:4px'></div>", unsafe_allow_html=True)
 
     # KPIs extraidos
     if st.session_state.ibex_kpi_data:
