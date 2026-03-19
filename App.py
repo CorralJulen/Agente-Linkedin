@@ -14,6 +14,7 @@ TELEGRAM_TOKEN   = st.secrets.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
 SUPABASE_URL     = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY     = st.secrets.get("SUPABASE_ANON_KEY", "")
+NEWSAPI_KEY      = st.secrets.get("NEWSAPI_KEY", "231afc3ea3d845fcae8acafe7f314c44")
 
 RSS_BANCA = [
     ("El Economista - Banca",   "https://www.eleconomista.es/rss/rss-banca.php"),
@@ -28,21 +29,21 @@ RSS_ESTRATEGIA = [
     ("El País - Economía",         "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada"),
     ("Cinco Días",                 "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
 ]
-# Datos + BI + ML — fuentes especializadas en negocio y datos, sin tech general
+# Datos + BI — fuentes 100% especializadas en datos y negocio
 RSS_DATOS = [
-    ("Cinco Días",               "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
+    ("Datanalytics",             "https://www.datanalytics.com/feed/"),
+    ("Analytics Lane",           "https://www.analyticslane.com/feed/"),
+    ("BBVA Open Mind",           "https://www.bbvaopenmind.com/feed/"),
     ("El Economista - Empresas", "https://www.eleconomista.es/rss/rss-empresas.php"),
-    ("Expansión - Empresas",     "https://e00-expansion.uecdn.es/rss/empresas.xml"),
-    ("El Confidencial - Tecno",  "https://www.elconfidencial.com/rss/tecnologia/"),
-    ("Computing España",         "https://www.computing.es/feed/"),
+    ("Cinco Días",               "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
 ]
-# IA — fuentes especializadas en IA aplicada a empresa, sin tech de consumo
+# IA — fuentes especializadas + NewsAPI como respaldo garantizado
 RSS_IA = [
-    ("El Español - Tech",        "https://www.elespanol.com/rss/tecnologia/"),
+    ("El Confidencial - Tech",   "https://www.elconfidencial.com/rss/tecnologia/"),
+    ("Xataka",                   "https://feeds.weblogssl.com/xataka"),
+    ("El Economista - Tech",     "https://www.eleconomista.es/rss/rss-tecnologia.php"),
     ("ABC - Tecnología",         "https://www.abc.es/rss/feeds/abc_tecnologia.xml"),
     ("La Vanguardia - Tecno",    "https://www.lavanguardia.com/rss/home.xml"),
-    ("El Economista - Tech",     "https://www.eleconomista.es/rss/rss-tecnologia.php"),
-    ("Expansión - Empresas",     "https://e00-expansion.uecdn.es/rss/empresas.xml"),
 ]
 
 KEYWORDS_BANCA = ["banco","banca","financiero","finanzas","crédito","hipoteca","tipos de interés","BCE","banco central","entidad financiera","inversión","bolsa","mercado","deuda","capital","fondo","dividendo","acción","cotización","préstamo","morosidad","regulación bancaria"]
@@ -304,14 +305,73 @@ def parsear_un_feed(sector, excluir_urls):
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
                         "imagen": extraer_imagen(entry), "_sector": sector}
         except Exception: pass
+    # Respaldo NewsAPI para BI e IA si RSS no encuentra nada
+    NEWSAPI_QUERIES = {
+        "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "ciencia de datos")', "NewsAPI BI"),
+        "ia":    ('("inteligencia artificial" OR "IA generativa" OR "ChatGPT" OR "LLM")', "NewsAPI IA"),
+    }
+    if sector in NEWSAPI_QUERIES:
+        query, label = NEWSAPI_QUERIES[sector]
+        arts = _newsapi_buscar(query, label)
+        for art in arts:
+            if art["url"] in excluir_urls: continue
+            if es_relevante(art["titulo"], art["resumen"], keywords):
+                art["_sector"] = sector
+                return art
     return None
 
 # ── Funciones Gemini ───────────────────────────────────────────────────────────
 
+def _newsapi_buscar(query_es, fuente_label):
+    """Busca noticias via NewsAPI en español. Devuelve lista de artículos normalizados."""
+    try:
+        desde = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
+        r = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q": query_es,
+                "language": "es",
+                "sortBy": "publishedAt",
+                "pageSize": 10,
+                "from": desde,
+                "apiKey": NEWSAPI_KEY,
+            },
+            timeout=10
+        )
+        if r.status_code != 200:
+            return []
+        arts = r.json().get("articles", [])
+        resultado = []
+        for a in arts:
+            titulo = a.get("title","") or ""
+            resumen = a.get("description","") or a.get("content","") or ""
+            url = a.get("url","")
+            if not titulo or not url or len(resumen) < 60: continue
+            # Filtrar artículos en inglés por heurística simple
+            palabras_ingles = ["the ","this ","that ","with ","from ","have ","will ","your ","their "]
+            texto_lower = (titulo + " " + resumen).lower()
+            if sum(1 for p in palabras_ingles if p in texto_lower) >= 3: continue
+            try:
+                published = datetime.fromisoformat(a.get("publishedAt","").replace("Z",""))
+            except Exception:
+                published = datetime.now()
+            resultado.append({
+                "fuente": a.get("source",{}).get("name", fuente_label),
+                "titulo": titulo[:200],
+                "resumen": resumen[:400],
+                "url": url,
+                "fecha": published.strftime("%d/%m/%Y"),
+                "imagen": a.get("urlToImage","") or "",
+            })
+        return resultado
+    except Exception:
+        return []
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_noticias_por_sector():
     hace_5_dias = datetime.now() - timedelta(days=5)
-    def parsear(feeds, keywords):
+
+    def parsear_rss(feeds, keywords):
         noticias = []
         for fuente, url in feeds:
             try:
@@ -331,9 +391,26 @@ def fetch_noticias_por_sector():
                         "imagen": extraer_imagen(entry)})
             except Exception: pass
         return noticias
+
+    # Queries NewsAPI por sector (solo para BI e IA donde RSS falla más)
+    NEWSAPI_QUERIES = {
+        "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "cuadro de mando" OR "ciencia de datos")', "NewsAPI BI"),
+        "ia":    ('("inteligencia artificial" OR "IA generativa" OR "ChatGPT" OR "LLM" OR "automatización IA")', "NewsAPI IA"),
+    }
+
     resultado = {}
     for sector, cfg in SECTORES.items():
-        pool = parsear(cfg["feeds"], cfg.get("keywords",[]))
+        keywords = cfg.get("keywords", [])
+        # 1. Intentar RSS primero
+        pool = parsear_rss(cfg["feeds"], keywords)
+        # 2. Si es BI o IA y el pool está vacío o pequeño, completar con NewsAPI
+        if sector in NEWSAPI_QUERIES and len(pool) < 3:
+            query, label = NEWSAPI_QUERIES[sector]
+            api_arts = _newsapi_buscar(query, label)
+            # Filtrar por keywords también
+            for art in api_arts:
+                if es_relevante(art["titulo"], art["resumen"], keywords):
+                    pool.append(art)
         resultado[sector] = random.choice(pool) if pool else None
     return resultado
 
