@@ -308,7 +308,7 @@ def parsear_un_feed(sector, excluir_urls):
 
 # ── Funciones Gemini ───────────────────────────────────────────────────────────
 
-
+@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_noticias_por_sector():
     hace_5_dias = datetime.now() - timedelta(days=5)
     def parsear(feeds, keywords):
