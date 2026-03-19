@@ -57,6 +57,104 @@ SECTORES = {
     "datos":      {"feeds": RSS_DATOS,      "etiqueta": "📊 Datos & BI",              "perfil": "analista de datos y BI",         "keywords": KEYWORDS_DATOS},
     "ia":         {"feeds": RSS_IA,         "etiqueta": "🤖 Inteligencia Artificial", "perfil": "consultor de IA",               "keywords": KEYWORDS_IA},
 }
+
+# ── Indicadores Macro (BCE, INE) ───────────────────────────────────────────────
+INDICADORES_MACRO = {
+    "tipo_refi_bce": {
+        "nombre": "Tipo de interés BCE (Refi Rate)",
+        "descripcion": "Tipo oficial de refinanciación del Banco Central Europeo",
+        "fuente": "BCE · Statistical Data Warehouse",
+        "url_api": "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_FR.LEV?format=json&lastNObservations=24",
+        "eje_y": "% Tipo de interés",
+        "color": "#6c63ff",
+        "tipo_grafico": "line",
+    },
+    "ipc_espana": {
+        "nombre": "IPC España (Inflación mensual)",
+        "descripcion": "Índice de Precios al Consumo, variación anual en España",
+        "fuente": "INE · Estadística oficial",
+        "url_api": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/IPC206449?nult=24",
+        "eje_y": "% Variación anual",
+        "color": "#f87171",
+        "tipo_grafico": "line",
+    },
+    "pib_espana": {
+        "nombre": "PIB España (Variación trimestral)",
+        "descripcion": "Tasa de variación trimestral del PIB de España",
+        "fuente": "INE · Contabilidad Nacional Trimestral",
+        "url_api": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/CNTR4300?nult=16",
+        "eje_y": "% Variación trimestral",
+        "color": "#4ade80",
+        "tipo_grafico": "bar",
+    },
+    "tasa_paro_espana": {
+        "nombre": "Tasa de paro España (EPA)",
+        "descripcion": "Tasa de desempleo en España según la Encuesta de Población Activa",
+        "fuente": "INE · EPA trimestral",
+        "url_api": "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/EPA3966?nult=16",
+        "eje_y": "% Tasa de paro",
+        "color": "#fbbf24",
+        "tipo_grafico": "line",
+    },
+    "credito_bancario": {
+        "nombre": "Crédito bancario a empresas (España)",
+        "descripcion": "Volumen de crédito concedido por entidades bancarias españolas a empresas",
+        "fuente": "BCE · Statistical Data Warehouse",
+        "url_api": "https://data-api.ecb.europa.eu/service/data/BSI/M.ES.N.A.A20.A.1.U2.2240.Z01.E?format=json&lastNObservations=24",
+        "eje_y": "Miles de millones €",
+        "color": "#a78bfa",
+        "tipo_grafico": "line",
+    },
+}
+
+# ── Indicadores IA & Tech (Eurostat, ONTSI) ───────────────────────────────────
+INDICADORES_IA_TECH = {
+    "empresas_ia_espana": {
+        "nombre": "Empresas españolas que usan IA (%)",
+        "descripcion": "Porcentaje de empresas en España que usan tecnologías de inteligencia artificial",
+        "fuente": "Eurostat · isoc_eb_ai",
+        "url_api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/isoc_eb_ai?format=JSON&lang=en&unit=PC_ENT&geo=ES&time=2021,2022,2023,2024",
+        "eje_y": "% Empresas",
+        "color": "#fbbf24",
+        "tipo_grafico": "bar",
+    },
+    "empresas_cloud_espana": {
+        "nombre": "Empresas españolas en la nube (%)",
+        "descripcion": "Porcentaje de empresas españolas que contratan servicios de cloud computing",
+        "fuente": "Eurostat · isoc_cicce_use",
+        "url_api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/isoc_cicce_use?format=JSON&lang=en&unit=PC_ENT&indic_is=CC&geo=ES&time=2018,2019,2020,2021,2022,2023,2024",
+        "eje_y": "% Empresas",
+        "color": "#6c63ff",
+        "tipo_grafico": "line",
+    },
+    "empresas_bigdata_espana": {
+        "nombre": "Empresas españolas usando Big Data (%)",
+        "descripcion": "Porcentaje de empresas en España que analizan Big Data de fuentes propias",
+        "fuente": "Eurostat · isoc_eb_bd",
+        "url_api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/isoc_eb_bd?format=JSON&lang=en&unit=PC_ENT&geo=ES&time=2018,2019,2020,2021,2022,2023,2024",
+        "eje_y": "% Empresas",
+        "color": "#4ade80",
+        "tipo_grafico": "bar",
+    },
+    "inversion_tic_espana": {
+        "nombre": "Inversión TIC empresas España",
+        "descripcion": "Inversión de empresas españolas en Tecnologías de la Información y Comunicación",
+        "fuente": "Eurostat · tin00074",
+        "url_api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/tin00074?format=JSON&lang=en&geo=ES&time=2018,2019,2020,2021,2022,2023",
+        "eje_y": "Millones €",
+        "color": "#f87171",
+        "tipo_grafico": "bar",
+    },
+    "automatizacion_tareas": {
+        "nombre": "Trabajadores con alto riesgo automatización (UE)",
+        "descripcion": "Porcentaje de trabajadores europeos en ocupaciones con alto riesgo de automatización por IA",
+        "fuente": "Eurostat · lfsa_eisn2",
+        "url_api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/lfsa_eisn2?format=JSON&lang=en&geo=EU27_2020&time=2019,2020,2021,2022,2023",
+        "eje_y": "% Trabajadores",
+        "color": "#a78bfa",
+        "tipo_grafico": "line",
+    },
+}
 TONOS = {
     "aprendiendo": {"label": "🎓 Estoy aprendiendo",    "instruccion": "Escribe desde la perspectiva de alguien que está aprendiendo y reflexionando sobre el sector. Muestra curiosidad y ganas de crecer."},
     "senior":      {"label": "💼 Quiero parecer senior", "instruccion": "Escribe con tono experto y seguro. Analiza con criterio profesional, usa terminología del sector con naturalidad."},
@@ -87,6 +185,8 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .sector-pill-estrategia { background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); color: #d8b4fe; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
 .sector-pill-datos { background: rgba(20,184,166,0.15); border: 1px solid rgba(20,184,166,0.3); color: #5eead4; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
 .sector-pill-ia { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); color: #fbbf24; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
+.sector-pill-macro { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
+.sector-pill-ia_tech { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; font-size: 10px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
 .date-pill { color: #7070a0; font-size: 11px; }
 .card-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: #f0f0f8; line-height: 1.35; margin-bottom: 0.6rem; }
 .card-desc { color: rgba(112,112,160,0.9); font-size: 13px; line-height: 1.65; }
@@ -540,6 +640,163 @@ Dime: qué tema tocar, qué tono usar y a qué sector específico atacar para cr
 Responde de forma concisa (máx 60 palabras)."""
     return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
 
+# ── Funciones de datos macroeconómicos e IA & Tech ────────────────────────────
+
+def fetch_datos_bce(url_api):
+    try:
+        r = requests.get(url_api, timeout=12, headers={"Accept": "application/json"})
+        if r.status_code != 200: return []
+        data = r.json()
+        series = data.get("dataSets",[{}])[0].get("series",{})
+        if not series: return []
+        obs = list(series.values())[0].get("observations",{})
+        periodos = data.get("structure",{}).get("dimensions",{}).get("observation",[{}])[0].get("values",[])
+        resultado = []
+        for idx, periodo in enumerate(periodos):
+            val = obs.get(str(idx), [None])[0]
+            if val is not None:
+                resultado.append((periodo.get("name", str(idx)), float(val)))
+        return resultado[-24:]
+    except Exception:
+        return []
+
+def fetch_datos_ine(url_api):
+    try:
+        r = requests.get(url_api, timeout=12)
+        if r.status_code != 200: return []
+        data = r.json()
+        datos = data.get("Data", [])
+        resultado = []
+        for d in datos:
+            fecha = d.get("NombrePeriodo","")
+            val = d.get("Valor")
+            if val is not None and fecha:
+                resultado.append((fecha, float(str(val).replace(",","."))))
+        return resultado
+    except Exception:
+        return []
+
+def fetch_datos_eurostat(url_api):
+    try:
+        r = requests.get(url_api, timeout=12, headers={"Accept": "application/json"})
+        if r.status_code != 200: return []
+        data = r.json()
+        dimensiones = data.get("dimension", {})
+        tiempo = None
+        for k, v in dimensiones.items():
+            if "time" in k.lower() or k == "time":
+                tiempo = v
+                break
+        if not tiempo:
+            tiempo = list(dimensiones.values())[-1]
+        periodos = {str(v): k for k, v in tiempo.get("category", {}).get("index", {}).items()}
+        valores = data.get("value", {})
+        resultado = []
+        for idx_str, val in valores.items():
+            if val is not None:
+                periodo = periodos.get(idx_str, idx_str)
+                resultado.append((periodo, float(val)))
+        return sorted(resultado, key=lambda x: x[0])
+    except Exception:
+        return []
+
+def obtener_datos_indicador(indicador_id, tipo_sector):
+    cfg = INDICADORES_MACRO.get(indicador_id, {}) if tipo_sector == "macro" else INDICADORES_IA_TECH.get(indicador_id, {})
+    if not cfg: return [], cfg
+    url = cfg["url_api"]
+    if "ecb.europa.eu" in url:
+        datos = fetch_datos_bce(url)
+    elif "ine.es" in url:
+        datos = fetch_datos_ine(url)
+    elif "europa.eu/eurostat" in url:
+        datos = fetch_datos_eurostat(url)
+    else:
+        datos = []
+    return datos, cfg
+
+def generar_grafico_png(datos, cfg):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
+    import io as _io
+
+    fechas = [d[0] for d in datos]
+    valores = [d[1] for d in datos]
+    color = cfg.get("color", "#6c63ff")
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    fig.patch.set_facecolor("#0a0a0f")
+    ax.set_facecolor("#13131a")
+
+    if cfg.get("tipo_grafico") == "bar":
+        ax.bar(range(len(fechas)), valores, color=color, alpha=0.85, zorder=3, width=0.6)
+        ax.set_xticks(range(len(fechas)))
+        ax.set_xticklabels(fechas, rotation=45, ha="right", fontsize=9, color="#a0a0c0")
+    else:
+        ax.plot(range(len(fechas)), valores, color=color, linewidth=2.5, zorder=3, marker="o", markersize=4)
+        ax.fill_between(range(len(fechas)), valores, alpha=0.12, color=color)
+        step = max(1, len(fechas)//10)
+        ax.set_xticks(range(0, len(fechas), step))
+        ax.set_xticklabels([fechas[i] for i in range(0, len(fechas), step)],
+                           rotation=45, ha="right", fontsize=9, color="#a0a0c0")
+
+    ax.set_title(cfg.get("nombre",""), fontsize=14, fontweight="bold", color="#f0f0f8", pad=16)
+    ax.set_ylabel(cfg.get("eje_y",""), fontsize=10, color="#a0a0c0")
+    ax.tick_params(axis="y", labelcolor="#a0a0c0", labelsize=9)
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+    ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#2a2a4a"); ax.spines["bottom"].set_color("#2a2a4a")
+    ax.grid(axis="y", color="#2a2a4a", linewidth=0.6, zorder=0)
+    fig.text(0.5, -0.04, f"Fuente: {cfg.get('fuente','')} · {cfg.get('descripcion','')}", ha="center", fontsize=8, color="#7070a0", style="italic")
+    fig.tight_layout()
+
+    buf = _io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()
+
+def generar_post_desde_datos(datos, cfg, tono, tipo_sector):
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    instruccion_tono = TONOS.get(tono, TONOS["aprendiendo"])["instruccion"]
+    if datos:
+        ultimos = datos[-8:]
+        resumen_datos = ", ".join([f"{f}: {v:.2f}" for f, v in ultimos])
+        tendencia = "alcista" if len(datos) >= 2 and datos[-1][1] > datos[-2][1] else "bajista" if len(datos) >= 2 and datos[-1][1] < datos[-2][1] else "estable"
+        ultimo_valor = f"{datos[-1][1]:.2f}"
+        ultima_fecha = datos[-1][0]
+    else:
+        resumen_datos = "datos no disponibles"
+        tendencia = "incierta"
+        ultimo_valor = "N/D"
+        ultima_fecha = "reciente"
+    sector_label = "macroeconomía y finanzas" if tipo_sector == "macro" else "tecnología e inteligencia artificial empresarial"
+    prompt = f"""Escribe un post de LinkedIn basado en datos reales de {sector_label}.
+
+INDICADOR: {cfg.get('nombre','')}
+DESCRIPCION: {cfg.get('descripcion','')}
+FUENTE: {cfg.get('fuente','')}
+ULTIMO VALOR: {ultimo_valor} ({ultima_fecha})
+TENDENCIA: {tendencia}
+EVOLUCION RECIENTE: {resumen_datos}
+
+TONO: {instruccion_tono}
+
+REGLAS ESTRICTAS:
+1. Empieza con el dato mas llamativo o la tendencia mas relevante como gancho.
+2. Analiza que significa este dato para las empresas, el empleo o la economia espanola.
+3. Incluye 2-3 insights concretos basados en la tendencia.
+4. Incluye una reflexion de futuro: que puede pasar en los proximos 6-12 meses?
+5. Cierra con una pregunta provocadora sobre el impacto real del indicador.
+6. Maximo 2 emojis, parrafos cortos (max 3 lineas), doble salto entre parrafos.
+7. Post en ESPANOL, 150-250 palabras. 5-8 hashtags al final.
+8. NO menciones que eres IA, estudiante, ni ningun rol o titulo academico.
+9. Presenta el dato como si tu mismo lo hubieras analizado.
+
+Devuelve SOLO el texto del post."""
+    return client.models.generate_content(model="gemini-flash-latest", contents=prompt).text.strip()
+
 # ── Carrusel PDF vertical ─────────────────────────────────────────────────────
 def crear_carrusel_pdf(contenido: dict) -> bytes:
     from reportlab.pdfgen import canvas as rl_canvas
@@ -978,7 +1235,11 @@ for key, val in [("noticias",[]),("post_generado",""),("noticia_elegida",None),
                   ("post_en",""),("edicion_key",0),
                   ("competencia_data",None),("competencia_sector",""),
                   ("carrusel_pdf",None),("sb_cargado",False),
-                  ("datos_li_guardados",None)]:
+                  ("datos_li_guardados",None),
+                  ("datos_sector","macro"),("indicador_elegido",None),
+                  ("datos_grafico_png",None),("datos_post_generado",""),
+                  ("datos_puntuacion",None),("datos_post_en",""),
+                  ("datos_carrusel_pdf",None),("datos_edicion_key",0)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -1344,6 +1605,151 @@ elif st.session_state.fase == "dashboard":
         st.session_state.fase = "inicio"
         st.rerun()
 
+# ── ANÁLISIS DE DATOS (fichas Macro e IA & Tech) ──────────────────────────────
+elif st.session_state.fase == "datos_sector":
+    tipo = st.session_state.datos_sector
+    indicadores = INDICADORES_MACRO if tipo == "macro" else INDICADORES_IA_TECH
+    etiqueta_sector = "📈 Macro & Economía" if tipo == "macro" else "🤖 IA & Tech Empresarial"
+
+    st.markdown(f"""
+    <div class="post-header">
+        <div class="post-icon">{"📈" if tipo == "macro" else "🤖"}</div>
+        <div>
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#f0f0f8">{etiqueta_sector}</div>
+            <div style="font-size:12px;color:#7070a0;margin-top:2px">Datos reales · Gráfico PNG descargable · Post con reflexión de futuro</div>
+        </div>
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="section-label">Elige el indicador a analizar</div>', unsafe_allow_html=True)
+    opciones = {k: v["nombre"] for k, v in indicadores.items()}
+    indicador_sel = st.selectbox("", options=list(opciones.keys()),
+        format_func=lambda x: opciones[x], label_visibility="collapsed", key="sel_indicador")
+    cfg_sel = indicadores[indicador_sel]
+    st.markdown(f'<div style="font-size:12px;color:#7070a0;margin-bottom:0.5rem">{cfg_sel["descripcion"]} · <span style="color:#a78bfa">{cfg_sel["fuente"]}</span></div>', unsafe_allow_html=True)
+
+    if st.button("📊  Cargar datos y generar gráfico", use_container_width=True, key="btn_cargar"):
+        with st.spinner("Cargando datos reales..."):
+            datos, cfg = obtener_datos_indicador(indicador_sel, tipo)
+        if not datos:
+            st.error("No se pudieron obtener datos de la API. Inténtalo de nuevo en unos minutos.")
+        else:
+            with st.spinner("Generando gráfico..."):
+                png_bytes = generar_grafico_png(datos, cfg)
+            st.session_state.indicador_elegido = {"id": indicador_sel, "cfg": cfg, "datos": datos, "tipo": tipo}
+            st.session_state.datos_grafico_png = png_bytes
+            st.session_state.datos_post_generado = ""
+            st.session_state.datos_puntuacion = None
+            st.session_state.datos_edicion_key += 1
+            st.rerun()
+
+    if st.session_state.datos_grafico_png and st.session_state.indicador_elegido:
+        ind = st.session_state.indicador_elegido
+        cfg_act = ind["cfg"]; datos_act = ind["datos"]; tipo_act = ind["tipo"]
+
+        st.markdown('<div class="section-label">📊 Gráfico generado</div>', unsafe_allow_html=True)
+        st.image(st.session_state.datos_grafico_png, use_container_width=True)
+        nombre_archivo = re.sub(r"[^a-z0-9]+", "_", cfg_act.get("nombre","grafico").lower())[:40]
+        st.download_button(label="⬇️  Descargar gráfico PNG", data=st.session_state.datos_grafico_png,
+            file_name=f"grafico_{nombre_archivo}.png", mime="image/png",
+            use_container_width=True, key="dl_grafico")
+        st.markdown('<div style="font-size:12px;color:#7070a0;margin-top:4px;margin-bottom:1rem">💡 Descarga el gráfico y súbelo como imagen a LinkedIn junto con el post de texto</div>', unsafe_allow_html=True)
+
+        if datos_act:
+            valores = [d[1] for d in datos_act]
+            ultimo = datos_act[-1]
+            penultimo = datos_act[-2] if len(datos_act) >= 2 else None
+            variacion = ((ultimo[1] - penultimo[1]) / abs(penultimo[1]) * 100) if penultimo and penultimo[1] != 0 else 0
+            c1, c2, c3 = st.columns(3)
+            c1.metric(f"Último ({ultimo[0]})", f"{ultimo[1]:.2f}")
+            c2.metric("Variación", f"{variacion:+.2f}%")
+            c3.metric("Máximo período", f"{max(valores):.2f}")
+
+        st.markdown('<div class="section-label">✦ Generar post LinkedIn</div>', unsafe_allow_html=True)
+
+        if not st.session_state.datos_post_generado:
+            st.markdown('<div style="font-size:12px;color:#7070a0;margin-bottom:12px">Elige el tono y Gemini analizará los datos para generar un post con reflexión de futuro</div>', unsafe_allow_html=True)
+            col_t1, col_t2, col_t3 = st.columns(3)
+            for i, (tono_key, tono_cfg) in enumerate(TONOS.items()):
+                with [col_t1, col_t2, col_t3][i]:
+                    if st.button(tono_cfg["label"], key=f"datos_tono_{tono_key}", use_container_width=True):
+                        with st.spinner("Gemini analizando datos..."):
+                            post = generar_post_desde_datos(datos_act, cfg_act, tono_key, tipo_act)
+                            st.session_state.datos_post_generado = post
+                            st.session_state.tono_elegido = tono_key
+                            st.session_state.datos_edicion_key += 1
+                            st.rerun()
+        else:
+            tono_label = TONOS.get(st.session_state.tono_elegido, {}).get("label","")
+            st.markdown(f'<div style="font-size:11px;color:#7070a0;margin-bottom:8px">Tono: {tono_label}</div>', unsafe_allow_html=True)
+            post_edit = st.text_area("", value=st.session_state.datos_post_generado, height=320,
+                label_visibility="collapsed", key=f"datos_editor_{st.session_state.datos_edicion_key}")
+            if post_edit != st.session_state.datos_post_generado:
+                st.session_state.datos_post_generado = post_edit
+
+            st.markdown('<div class="edicion-guiada-label">✨ Edición guiada</div>', unsafe_allow_html=True)
+            ce1, ce2, ce3 = st.columns(3)
+            with ce1:
+                if st.button("✂️ Más corto", use_container_width=True, key="ded_corto"):
+                    with st.spinner("Condensando..."):
+                        st.session_state.datos_post_generado = editar_post_guiado(st.session_state.datos_post_generado, "Reduce a máximo 150 palabras. Conserva datos clave y pregunta final.")
+                        st.session_state.datos_edicion_key += 1; st.rerun()
+            with ce2:
+                if st.button("🎣 Nuevo gancho", use_container_width=True, key="ded_gancho"):
+                    with st.spinner("Reescribiendo gancho..."):
+                        st.session_state.datos_post_generado = editar_post_guiado(st.session_state.datos_post_generado, "Reescribe SOLO las primeras 1-2 líneas con el dato más impactante como gancho. El resto igual.")
+                        st.session_state.datos_edicion_key += 1; st.rerun()
+            with ce3:
+                if st.button("🔮 Más futuro", use_container_width=True, key="ded_futuro"):
+                    with st.spinner("Ampliando predicción..."):
+                        st.session_state.datos_post_generado = editar_post_guiado(st.session_state.datos_post_generado, "Amplía SOLO la reflexión de futuro. Añade una predicción más concreta para los próximos 6-12 meses. El resto igual.")
+                        st.session_state.datos_edicion_key += 1; st.rerun()
+
+            st.markdown('<div class="edicion-guiada-label">🔄 Cambiar pregunta final</div>', unsafe_allow_html=True)
+            cp1, cp2, cp3 = st.columns(3)
+            with cp1:
+                if st.button("💪 A favor del tema", use_container_width=True, key="dpreg_favor"):
+                    with st.spinner("Reescribiendo..."): st.session_state.datos_post_generado = cambiar_pregunta_final(st.session_state.datos_post_generado, "favor"); st.session_state.datos_edicion_key += 1; st.rerun()
+            with cp2:
+                if st.button("🔥 Provocar debate", use_container_width=True, key="dpreg_debate"):
+                    with st.spinner("Reescribiendo..."): st.session_state.datos_post_generado = cambiar_pregunta_final(st.session_state.datos_post_generado, "debate"); st.session_state.datos_edicion_key += 1; st.rerun()
+            with cp3:
+                if st.button("💭 Reflexión abierta", use_container_width=True, key="dpreg_reflexion"):
+                    with st.spinner("Reescribiendo..."): st.session_state.datos_post_generado = cambiar_pregunta_final(st.session_state.datos_post_generado, "reflexion"); st.session_state.datos_edicion_key += 1; st.rerun()
+
+            st.markdown("<hr>", unsafe_allow_html=True)
+            ca1, ca2 = st.columns(2)
+            with ca1:
+                if st.button("📋  Copiar post", use_container_width=True, key="dcopiar"):
+                    st.code(st.session_state.datos_post_generado, language=None)
+                    st.success("Copia el texto de arriba ↑")
+            with ca2:
+                if st.button("📨  Enviar a Telegram", use_container_width=True, key="dtelegram"):
+                    with st.spinner("Enviando..."):
+                        nf = {"fuente": cfg_act.get("fuente","Datos"), "fecha": datetime.now().strftime("%d/%m/%Y"),
+                              "url": cfg_act.get("url_api",""), "titulo": cfg_act.get("nombre","")}
+                        ok = enviar_telegram(st.session_state.datos_post_generado, nf)
+                        if ok:
+                            guardar_en_historial(st.session_state.datos_post_generado, nf,
+                                "banca" if tipo_act == "macro" else "ia", st.session_state.tono_elegido)
+                            st.success("✅ Enviado y guardado en historial.")
+                        else: st.error("❌ Error al enviar.")
+            ca3, ca4 = st.columns(2)
+            with ca3:
+                if st.button("🔄  Regenerar post", use_container_width=True, key="dregen"):
+                    st.session_state.datos_post_generado = ""; st.session_state.datos_edicion_key += 1; st.rerun()
+            with ca4:
+                if st.button("🔄  Cambiar indicador", use_container_width=True, key="dcambiar"):
+                    st.session_state.indicador_elegido = None; st.session_state.datos_grafico_png = None
+                    st.session_state.datos_post_generado = ""; st.rerun()
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    if st.button("← Volver al inicio", key="datos_volver"):
+        st.session_state.fase = "inicio"
+        st.session_state.indicador_elegido = None
+        st.session_state.datos_grafico_png = None
+        st.session_state.datos_post_generado = ""
+        st.rerun()
+
 # ── COMPETENCIA ────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "competencia":
     st.markdown("""
@@ -1421,6 +1827,35 @@ elif st.session_state.fase == "noticias":
                     st.rerun()
 
         st.markdown("<div style='margin-bottom:0.8rem'></div>", unsafe_allow_html=True)
+
+    st.markdown('<div class="section-label">O analiza datos reales</div>', unsafe_allow_html=True)
+    col_fmacro, col_fia = st.columns(2)
+    with col_fmacro:
+        st.markdown("""<div class="news-card" style="border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.04)">
+            <div class="card-meta"><span class="sector-pill-macro">📈 Macro &amp; Economía</span></div>
+            <div class="card-title" style="font-size:0.9rem">Tipos BCE, IPC, PIB, Paro</div>
+            <div class="card-desc">Datos reales del BCE e INE. Gráfico PNG descargable + post con predicción de futuro.</div>
+        </div>""", unsafe_allow_html=True)
+        if st.button("✦  Análisis Macro", use_container_width=True, key="sel_macro"):
+            st.session_state.datos_sector = "macro"
+            st.session_state.indicador_elegido = None
+            st.session_state.datos_grafico_png = None
+            st.session_state.datos_post_generado = ""
+            st.session_state.fase = "datos_sector"
+            st.rerun()
+    with col_fia:
+        st.markdown("""<div class="news-card" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.04)">
+            <div class="card-meta"><span class="sector-pill-ia_tech">🤖 IA &amp; Tech Empresarial</span></div>
+            <div class="card-title" style="font-size:0.9rem">Adopción IA, Cloud, Big Data</div>
+            <div class="card-desc">Datos reales de Eurostat. Gráfico PNG descargable + post con reflexión de futuro.</div>
+        </div>""", unsafe_allow_html=True)
+        if st.button("✦  Análisis IA & Tech", use_container_width=True, key="sel_ia_tech"):
+            st.session_state.datos_sector = "ia_tech"
+            st.session_state.indicador_elegido = None
+            st.session_state.datos_grafico_png = None
+            st.session_state.datos_post_generado = ""
+            st.session_state.fase = "datos_sector"
+            st.rerun()
 
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button("← Volver"):
