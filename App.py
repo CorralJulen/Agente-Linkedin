@@ -752,7 +752,7 @@ def _gnews_buscar(query, sector, limite=15):
         pass
     return resultados
 
-
+@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_noticias_por_sector_v2():
     hace_7_dias = datetime.now() - timedelta(days=7)
 
