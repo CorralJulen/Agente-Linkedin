@@ -49,27 +49,23 @@ RSS_IA_FINANZAS = [
 KEYWORDS_BANCA = ["banco","banca","financiero","finanzas","crédito","hipoteca","tipos de interés","BCE","banco central","entidad financiera","inversión","bolsa","mercado","deuda","capital","fondo","dividendo","acción","cotización","préstamo","morosidad","regulación bancaria"]
 KEYWORDS_ESTRATEGIA = ["estrategia","empresa","CEO","directivo","fusión","adquisición","resultado","beneficio","facturación","negocio","mercado","competencia","innovación","transformación","consultor","management","liderazgo","startup","venture","inteligencia artificial","IA","digital"]
 KEYWORDS_IA_NEGOCIO = [
-    "inteligencia artificial empresa","IA empresarial","IA generativa","Copilot","ChatGPT empresa",
-    "automatización empresarial","transformación digital IA","productividad IA","adopción IA",
-    "Microsoft IA","Google IA","OpenAI empresa","Azure IA","caso de uso IA","IA aplicada negocio",
-    "eficiencia IA","herramienta IA","startup IA","inversión IA empresa","IA y gestión",
-    "IA recursos humanos","IA logística","IA marketing","IA operaciones","IA manufactura",
+    "inteligencia artificial","IA","Copilot","ChatGPT","Gemini","OpenAI",
+    "automatización","transformación digital","productividad","Microsoft","Google",
+    "startup","innovación","empresa","negocio","herramienta","adopción",
 ]
 KEYWORDS_IA_FINANZAS = [
-    "fintech","IA banca","inteligencia artificial finanzas","banca digital","IA financiero",
-    "scoring crediticio","detección fraude IA","robo-advisor","pagos digitales","open banking",
-    "IA inversión","IA seguros","insurtech","regtech","IA riesgo financiero",
-    "BBVA IA","Santander IA","CaixaBank digital","banco digital IA","neobank",
-    "IA mercados","algoritmo financiero","IA hipotecas","crédito digital","IA compliance",
+    "inteligencia artificial","IA","fintech","banca","banco","financiero",
+    "pagos","crédito","fraude","inversión","seguros","digital","innovación",
+    "BBVA","Santander","CaixaBank","Sabadell","neobank","open banking",
 ]
 
 SECTORES = {
     "banca":       {"feeds": RSS_BANCA,       "etiqueta": "🏦 Banca & Finanzas",       "perfil": "consultor de banca y finanzas",        "keywords": KEYWORDS_BANCA},
     "estrategia":  {"feeds": RSS_ESTRATEGIA,  "etiqueta": "♟️ Estrategia Empresarial", "perfil": "consultor de estrategia empresarial",  "keywords": KEYWORDS_ESTRATEGIA},
     "ia_negocio":  {"feeds": RSS_IA_NEGOCIO,  "etiqueta": "🤖 IA & Negocio",           "perfil": "consultor de IA aplicada a negocio",   "keywords": KEYWORDS_IA_NEGOCIO,
-                   "gnews": ["inteligencia artificial empresa negocio España adopción","IA empresarial productividad automatización caso uso","Copilot ChatGPT empresa transformación digital éxito"]},
+                   "gnews": ["inteligencia artificial empresas España 2025","Copilot ChatGPT automatización empresa España","IA negocio innovación transformación digital Europa"]},
     "ia_finanzas": {"feeds": RSS_IA_FINANZAS, "etiqueta": "💡 IA & Finanzas",          "perfil": "consultor de IA en finanzas y fintech", "keywords": KEYWORDS_IA_FINANZAS,
-                   "gnews": ["inteligencia artificial banca finanzas España fintech","IA banca digital scoring crédito fraude detección","fintech innovación financiera España pagos digitales"]},
+                   "gnews": ["inteligencia artificial banca España 2025","fintech innovación financiera España Europa","IA fraude crédito pagos digitales banca España"]},
 }
 
 # ── Indicadores Macro (BCE, INE) ───────────────────────────────────────────────
@@ -532,6 +528,8 @@ PALABRAS_NEGATIVAS_IA_NEGOCIO = _NEG_COMUNES + [
     "prohibir ia","ban ia","deepfake","fake news ia","manipulación ia",
     "vigilancia masiva","espionaje ia","privacidad violada ia","IA mata","IA peligrosa",
     "regulación restrictiva ia","multa ia","sanción ia",
+    "colombia","méxico","argentina","chile","perú","venezuela","ecuador",
+    "brasil","latinoamérica","america latina","centroamérica",
 ]
 # IA finanzas — descartan noticias de cripto especulativa, escándalos o alarmismo
 PALABRAS_NEGATIVAS_IA_FINANZAS = _NEG_COMUNES + [
@@ -540,6 +538,8 @@ PALABRAS_NEGATIVAS_IA_FINANZAS = _NEG_COMUNES + [
     "pérdidas millonarias","caída bolsa","escándalo financiero",
     "burbuja","especulación","ciberataque banco","hackeo bancario",
     "peligro ia","regulación prohibición fintech",
+    "colombia","méxico","argentina","chile","perú","venezuela","ecuador",
+    "brasil","latinoamérica","america latina","centroamérica",
 ]
 
 def es_noticia_valida(titulo, resumen, sector):
@@ -752,8 +752,8 @@ def _gnews_buscar(query, sector, limite=15):
         pass
     return resultados
 
-@st.cache_data(ttl=300, show_spinner=False)
-def fetch_noticias_por_sector():
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_noticias_por_sector_v2():
     hace_7_dias = datetime.now() - timedelta(days=7)
 
     def parsear_rss(feeds, keywords, sector_key):
@@ -2247,7 +2247,7 @@ if st.session_state.fase == "inicio":
     with col2:
         if st.button("⚡  Buscar noticias", use_container_width=True, type="primary"):
             with st.spinner("Buscando noticias españolas..."):
-                sectores_data = fetch_noticias_por_sector()
+                sectores_data = fetch_noticias_por_sector_v2()
                 noticias = []
                 for sector, noticia in sectores_data.items():
                     if noticia and noticia["url"] not in st.session_state.usadas:
