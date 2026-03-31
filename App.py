@@ -29,33 +29,47 @@ RSS_ESTRATEGIA = [
     ("El País - Economía",         "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada"),
     ("Cinco Días",                 "https://cincodias.elpais.com/rss/cincodias/ultimas_noticias/"),
 ]
-# Datos + BI — fuentes 100% especializadas en datos y negocio
-RSS_DATOS = [
-    ("Datanalytics",             "https://www.datanalytics.com/feed/"),
-    ("Analytics Lane",           "https://www.analyticslane.com/feed/"),
-    ("BBVA Open Mind",           "https://www.bbvaopenmind.com/feed/"),
-    ("Silicon.es",               "https://www.silicon.es/feed"),
-    ("El Economista - Empresas", "https://www.eleconomista.es/rss/rss-empresas.php"),
-]
-# IA — fuentes tech empresarial especializadas (Microsoft, Google, IA en empresa)
-RSS_IA = [
-    ("Silicon.es",               "https://www.silicon.es/feed"),
-    ("Muycomputer",              "https://www.muycomputer.com/feed/"),
-    ("Hipertextual",             "https://hipertextual.com/feed"),
+# IA aplicada a negocio — RSS especializados como complemento a Google News
+RSS_IA_NEGOCIO = [
     ("El Referente",             "https://elreferente.es/feed/"),
+    ("Silicon.es",               "https://www.silicon.es/feed"),
+    ("Microsoft Blog ES",        "https://blogs.microsoft.com/es-es/feed/"),
+    ("BBVA Open Mind",           "https://www.bbvaopenmind.com/feed/"),
     ("El Economista - Tech",     "https://www.eleconomista.es/rss/rss-tecnologia.php"),
+]
+# IA aplicada a finanzas — RSS especializados como complemento a Google News
+RSS_IA_FINANZAS = [
+    ("Fintech Spain",            "https://www.fintechspain.com/feed/"),
+    ("El Economista - Banca",    "https://www.eleconomista.es/rss/rss-banca.php"),
+    ("Expansión - Finanzas",     "https://e00-expansion.uecdn.es/rss/mercados.xml"),
+    ("El Confidencial - Banca",  "https://www.elconfidencial.com/rss/economia/finanzas-personales/"),
+    ("BBVA Open Mind",           "https://www.bbvaopenmind.com/feed/"),
 ]
 
 KEYWORDS_BANCA = ["banco","banca","financiero","finanzas","crédito","hipoteca","tipos de interés","BCE","banco central","entidad financiera","inversión","bolsa","mercado","deuda","capital","fondo","dividendo","acción","cotización","préstamo","morosidad","regulación bancaria"]
 KEYWORDS_ESTRATEGIA = ["estrategia","empresa","CEO","directivo","fusión","adquisición","resultado","beneficio","facturación","negocio","mercado","competencia","innovación","transformación","consultor","management","liderazgo","startup","venture","inteligencia artificial","IA","digital"]
-KEYWORDS_DATOS = ["business intelligence","BI","analítica de datos","cuadro de mando","dashboard","power bi","tableau","data warehouse","ETL","lago de datos","modelo predictivo","ciencia de datos","data science","analista de datos","visualización de datos","gobernanza del dato","arquitectura de datos","KPI","reporting","minería de datos"]
-KEYWORDS_IA = ["Microsoft IA","Google IA","OpenAI","Gemini","Copilot","Azure IA","Google Cloud IA","lanzamiento IA","inversión IA","IA empresarial","IA generativa empresa","adopción IA empresa","productividad IA","automatización empresarial","transformación digital IA","IA y negocio","herramienta IA","modelo lenguaje empresa","IA aplicada negocio","startup IA"]
+KEYWORDS_IA_NEGOCIO = [
+    "inteligencia artificial empresa","IA empresarial","IA generativa","Copilot","ChatGPT empresa",
+    "automatización empresarial","transformación digital IA","productividad IA","adopción IA",
+    "Microsoft IA","Google IA","OpenAI empresa","Azure IA","caso de uso IA","IA aplicada negocio",
+    "eficiencia IA","herramienta IA","startup IA","inversión IA empresa","IA y gestión",
+    "IA recursos humanos","IA logística","IA marketing","IA operaciones","IA manufactura",
+]
+KEYWORDS_IA_FINANZAS = [
+    "fintech","IA banca","inteligencia artificial finanzas","banca digital","IA financiero",
+    "scoring crediticio","detección fraude IA","robo-advisor","pagos digitales","open banking",
+    "IA inversión","IA seguros","insurtech","regtech","IA riesgo financiero",
+    "BBVA IA","Santander IA","CaixaBank digital","banco digital IA","neobank",
+    "IA mercados","algoritmo financiero","IA hipotecas","crédito digital","IA compliance",
+]
 
 SECTORES = {
-    "banca":      {"feeds": RSS_BANCA,      "etiqueta": "🏦 Banca",                  "perfil": "consultor de banca y finanzas",  "keywords": KEYWORDS_BANCA},
-    "estrategia": {"feeds": RSS_ESTRATEGIA, "etiqueta": "♟️ Estrategia",             "perfil": "consultor de estrategia",        "keywords": KEYWORDS_ESTRATEGIA},
-    "datos":      {"feeds": RSS_DATOS,      "etiqueta": "📊 Datos & BI",              "perfil": "analista de datos y BI",         "keywords": KEYWORDS_DATOS},
-    "ia":         {"feeds": RSS_IA,         "etiqueta": "🤖 Inteligencia Artificial", "perfil": "consultor de IA",               "keywords": KEYWORDS_IA},
+    "banca":       {"feeds": RSS_BANCA,       "etiqueta": "🏦 Banca & Finanzas",       "perfil": "consultor de banca y finanzas",        "keywords": KEYWORDS_BANCA},
+    "estrategia":  {"feeds": RSS_ESTRATEGIA,  "etiqueta": "♟️ Estrategia Empresarial", "perfil": "consultor de estrategia empresarial",  "keywords": KEYWORDS_ESTRATEGIA},
+    "ia_negocio":  {"feeds": RSS_IA_NEGOCIO,  "etiqueta": "🤖 IA & Negocio",           "perfil": "consultor de IA aplicada a negocio",   "keywords": KEYWORDS_IA_NEGOCIO,
+                   "gnews": ["inteligencia artificial empresa negocio España adopción","IA empresarial productividad automatización caso uso","Copilot ChatGPT empresa transformación digital éxito"]},
+    "ia_finanzas": {"feeds": RSS_IA_FINANZAS, "etiqueta": "💡 IA & Finanzas",          "perfil": "consultor de IA en finanzas y fintech", "keywords": KEYWORDS_IA_FINANZAS,
+                   "gnews": ["inteligencia artificial banca finanzas España fintech","IA banca digital scoring crédito fraude detección","fintech innovación financiera España pagos digitales"]},
 }
 
 # ── Indicadores Macro (BCE, INE) ───────────────────────────────────────────────
@@ -504,25 +518,39 @@ def es_relevante(titulo, resumen, keywords):
     texto = (titulo + " " + resumen).lower()
     return any(kw.lower() in texto for kw in keywords)
 
-# Palabras negativas — descartan noticias irrelevantes o dañinas para el perfil
-PALABRAS_NEGATIVAS_IA = [
-    "peligro","peligros","acoso","menor","menores","niño","niños","adolescente",
-    "demanda","denuncia","delito","abuso","violencia","pornografía","desnudo",
-    "auricular","auriculares","smartphone","móvil","consola","videojuego",
-    "coche eléctrico","vehículo","automóvil","televisor","tablet","reloj inteligente",
-    "precio","oferta","compra","tienda","amazon","rebaja",
+# Palabras negativas comunes — descartan noticias irrelevantes o dañinas
+_NEG_COMUNES = [
+    "acoso","menor","menores","niño","niños","adolescente","pornografía","desnudo","abuso",
+    "violencia","delito","denuncia","demanda","escándalo","corrupción",
+    "auricular","auriculares","smartphone","consola","videojuego","televisor","tablet",
+    "coche eléctrico","vehículo","automóvil","oferta","rebaja","tienda","amazon",
 ]
-PALABRAS_NEGATIVAS_DATOS = [
-    "coche eléctrico","vehículo","automóvil","ayuda industrial","subvención coche",
-    "auricular","smartphone","consola","videojuego","televisor",
-    "precio","oferta","compra","tienda","rebaja",
-    "peligro","acoso","menor","demanda judicial","denuncia",
+# IA negocio — descartan noticias alarmistas, regulatorias o irrelevantes
+PALABRAS_NEGATIVAS_IA_NEGOCIO = _NEG_COMUNES + [
+    "peligro ia","apocalipsis","amenaza","desempleo masivo","destrucción empleo",
+    "robot roba trabajo","máquinas sustituyen","fin del trabajo","discriminación algoritmo",
+    "prohibir ia","ban ia","deepfake","fake news ia","manipulación ia",
+    "vigilancia masiva","espionaje ia","privacidad violada ia","IA mata","IA peligrosa",
+    "regulación restrictiva ia","multa ia","sanción ia",
+]
+# IA finanzas — descartan noticias de cripto especulativa, escándalos o alarmismo
+PALABRAS_NEGATIVAS_IA_FINANZAS = _NEG_COMUNES + [
+    "cripto","bitcoin","ethereum","nft","blockchain especulativa","token",
+    "estafa","fraude cripto","ponzi","colapso","quiebra","crack","derrumbe",
+    "pérdidas millonarias","caída bolsa","escándalo financiero",
+    "burbuja","especulación","ciberataque banco","hackeo bancario",
+    "peligro ia","regulación prohibición fintech",
 ]
 
 def es_noticia_valida(titulo, resumen, sector):
     """Descarta noticias con palabras negativas según el sector."""
     texto = (titulo + " " + resumen).lower()
-    lista = PALABRAS_NEGATIVAS_IA if sector == "ia" else PALABRAS_NEGATIVAS_DATOS if sector == "datos" else []
+    if sector == "ia_negocio":
+        lista = PALABRAS_NEGATIVAS_IA_NEGOCIO
+    elif sector == "ia_finanzas":
+        lista = PALABRAS_NEGATIVAS_IA_FINANZAS
+    else:
+        lista = _NEG_COMUNES
     return not any(p.lower() in texto for p in lista)
 
 def extraer_imagen(entry):
@@ -611,19 +639,15 @@ def parsear_un_feed(sector, excluir_urls):
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
                         "imagen": extraer_imagen(entry), "_sector": sector}
         except Exception: pass
-    # Respaldo NewsAPI para BI e IA si RSS no encuentra nada
-    NEWSAPI_QUERIES = {
-        "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "ciencia de datos")', "NewsAPI BI"),
-        "ia":    ('("Microsoft IA" OR "Google IA" OR "OpenAI" OR "Gemini" OR "Copilot" OR "IA empresarial" OR "adopción inteligencia artificial")', "NewsAPI IA"),
-    }
-    if sector in NEWSAPI_QUERIES:
-        query, label = NEWSAPI_QUERIES[sector]
-        arts = _newsapi_buscar(query, label)
-        for art in arts:
-            if art["url"] in excluir_urls: continue
-            if es_relevante(art["titulo"], art["resumen"], keywords) and es_noticia_valida(art["titulo"], art["resumen"], sector):
+    # Respaldo Google News para ia_negocio e ia_finanzas
+    gnews_queries = SECTORES.get(sector, {}).get("gnews", [])
+    if gnews_queries:
+        for q in gnews_queries:
+            arts = _gnews_buscar(q, sector)
+            for art in arts:
+                if art["url"] in excluir_urls: continue
                 art["_sector"] = sector
-                return art
+                return {k: v for k, v in art.items() if k != "_pub"}
     return None
 
 # ── Funciones Gemini ───────────────────────────────────────────────────────────
@@ -673,52 +697,88 @@ def _newsapi_buscar(query_es, fuente_label):
     except Exception:
         return []
 
+def _gnews_buscar(query, sector, limite=15):
+    """Busca en Google News RSS. Gratuito, sin limites, excelente cobertura."""
+    import urllib.parse
+    resultados = []
+    keywords = SECTORES.get(sector, {}).get("keywords", [])
+    try:
+        q_enc = urllib.parse.quote(query)
+        url_g = f"https://news.google.com/rss/search?q={q_enc}&hl=es&gl=ES&ceid=ES:es"
+        feed = feedparser.parse(url_g)
+        hace_10_dias = datetime.now() - timedelta(days=10)
+        for entry in feed.entries[:limite]:
+            titulo = entry.get("title", "") or ""
+            resumen = entry.get("summary", entry.get("description", ""))[:500] or ""
+            resumen_limpio = re.sub(r'<[^>]+>', '', resumen).strip()[:400]
+            url_art = entry.get("link", "")
+            if not titulo or not url_art: continue
+            try:
+                pub = datetime(*entry.published_parsed[:6]) if hasattr(entry,"published_parsed") and entry.published_parsed else datetime.now()
+            except Exception:
+                pub = datetime.now()
+            if pub < hace_10_dias: continue
+            if not es_noticia_valida(titulo, resumen_limpio, sector): continue
+            if keywords and not es_relevante(titulo, resumen_limpio, keywords): continue
+            resultados.append({
+                "fuente": "Google News",
+                "titulo": titulo[:200],
+                "resumen": resumen_limpio if len(resumen_limpio) > 40 else titulo,
+                "url": url_art,
+                "fecha": pub.strftime("%d/%m/%Y"),
+                "imagen": "",
+                "_pub": pub,
+            })
+    except Exception:
+        pass
+    return resultados
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_noticias_por_sector():
-    hace_5_dias = datetime.now() - timedelta(days=5)
+    hace_7_dias = datetime.now() - timedelta(days=7)
 
-    def parsear_rss(feeds, keywords):
+    def parsear_rss(feeds, keywords, sector_key):
         noticias = []
         for fuente, url in feeds:
             try:
                 feed = feedparser.parse(url)
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:8]:
                     published = None
                     if hasattr(entry,"published_parsed") and entry.published_parsed:
                         published = datetime(*entry.published_parsed[:6])
-                    if published and published < hace_5_dias: continue
+                    if published and published < hace_7_dias: continue
                     titulo = entry.get("title","")
                     resumen = entry.get("summary", entry.get("description",""))[:400]
-                    if not titulo or len(resumen) < 80: continue
+                    if not titulo or len(resumen) < 60: continue
                     if keywords and not es_relevante(titulo, resumen, keywords): continue
-                    if not es_noticia_valida(titulo, resumen, sector): continue
+                    if not es_noticia_valida(titulo, resumen, sector_key): continue
                     noticias.append({"fuente": fuente, "titulo": titulo, "resumen": resumen,
                         "url": entry.get("link",""),
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
-                        "imagen": extraer_imagen(entry)})
+                        "imagen": extraer_imagen(entry),
+                        "_pub": published or datetime.now()})
             except Exception: pass
         return noticias
 
-    # Queries NewsAPI por sector (solo para BI e IA donde RSS falla más)
-    NEWSAPI_QUERIES = {
-        "datos": ('("business intelligence" OR "analítica de datos" OR "data warehouse" OR "cuadro de mando" OR "ciencia de datos")', "NewsAPI BI"),
-        "ia":    ('("Microsoft IA" OR "Google IA" OR "OpenAI" OR "Gemini" OR "Copilot" OR "IA empresarial" OR "IA generativa empresa" OR "adopción inteligencia artificial")', "NewsAPI IA"),
-    }
-
     resultado = {}
-    for sector, cfg in SECTORES.items():
+    for sector_key, cfg in SECTORES.items():
         keywords = cfg.get("keywords", [])
-        # 1. Intentar RSS primero
-        pool = parsear_rss(cfg["feeds"], keywords)
-        # 2. Si es BI o IA y el pool está vacío o pequeño, completar con NewsAPI
-        if sector in NEWSAPI_QUERIES and len(pool) < 3:
-            query, label = NEWSAPI_QUERIES[sector]
-            api_arts = _newsapi_buscar(query, label)
-            # Filtrar por keywords también
-            for art in api_arts:
-                if es_relevante(art["titulo"], art["resumen"], keywords) and es_noticia_valida(art["titulo"], art["resumen"], sector):
+        pool = parsear_rss(cfg["feeds"], keywords, sector_key)
+
+        # ia_negocio e ia_finanzas: Google News como fuente principal
+        gnews_queries = cfg.get("gnews", [])
+        for q in gnews_queries:
+            arts = _gnews_buscar(q, sector_key)
+            for art in arts:
+                if art["url"] not in [p["url"] for p in pool]:
                     pool.append(art)
-        resultado[sector] = random.choice(pool) if pool else None
+            if len(pool) >= 10:
+                break
+
+        # Ordenar por fecha, elegir una al azar del top-5 más recientes
+        pool.sort(key=lambda x: x.get("_pub", datetime.now()), reverse=True)
+        pool_clean = [{k: v for k, v in p.items() if k != "_pub"} for p in pool]
+        resultado[sector_key] = random.choice(pool_clean[:5]) if pool_clean else None
     return resultado
 
 def generar_dos_posts(noticia, perfil, tono):
@@ -2984,7 +3044,7 @@ elif st.session_state.fase == "competencia":
             <div style="font-size:12px;color:#7070a0;margin-top:2px">Análisis de contenido en LinkedIn por sector</div>
         </div>
     </div>""", unsafe_allow_html=True)
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos","ia":"sector-pill-ia"}
+    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","ia_negocio":"sector-pill-ia","ia_finanzas":"sector-pill-macro"}
     for sector_key, cfg in SECTORES.items():
         if st.button(cfg["etiqueta"], key=f"comp_{sector_key}", use_container_width=True):
             with st.spinner("Analizando..."):
@@ -3018,7 +3078,7 @@ elif st.session_state.fase == "historial":
 # ── NOTICIAS ───────────────────────────────────────────────────────────────────
 elif st.session_state.fase == "noticias":
     st.markdown('<div class="section-label">Elige una noticia</div>', unsafe_allow_html=True)
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos","ia":"sector-pill-ia"}
+    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","ia_negocio":"sector-pill-ia","ia_finanzas":"sector-pill-macro"}
 
     for i, n in enumerate(st.session_state.noticias):
         sector = n.get("_sector","")
@@ -3092,7 +3152,7 @@ elif st.session_state.fase == "elegir_tono":
     n = st.session_state.noticia_elegida
     sector = st.session_state.sector_elegido
     cfg = SECTORES.get(sector,{})
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos","ia":"sector-pill-ia"}
+    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","ia_negocio":"sector-pill-ia","ia_finanzas":"sector-pill-macro"}
     pill = pill_class.get(sector,"source-pill")
     st.markdown("""
     <div class="post-header">
@@ -3150,7 +3210,7 @@ elif st.session_state.fase == "post":
     n = st.session_state.noticia_elegida
     sector = st.session_state.sector_elegido
     cfg = SECTORES.get(sector,{})
-    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","datos":"sector-pill-datos","ia":"sector-pill-ia"}
+    pill_class = {"banca":"sector-pill-banca","estrategia":"sector-pill-estrategia","ia_negocio":"sector-pill-ia","ia_finanzas":"sector-pill-macro"}
     pill = pill_class.get(sector,"source-pill")
     etiqueta = cfg.get("etiqueta","")
     tono_label = TONOS.get(st.session_state.tono_elegido,{}).get("label","")
