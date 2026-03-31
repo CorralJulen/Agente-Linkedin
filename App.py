@@ -614,9 +614,37 @@ def calcular_racha():
 
 def parsear_un_feed(sector, excluir_urls):
     """Obtiene una noticia nueva de un sector excluyendo URLs ya usadas."""
-    hace_5_dias = datetime.now() - timedelta(days=5)
     cfg = SECTORES[sector]
     keywords = cfg.get("keywords", [])
+    gnews_queries = cfg.get("gnews", [])
+
+    # Para ia_negocio e ia_finanzas: Google News como fuente principal
+    # Mezclar todas las queries para maximizar variedad
+    if gnews_queries:
+        import random as _random
+        queries_shuffled = gnews_queries[:]
+        _random.shuffle(queries_shuffled)
+        candidatos = []
+        for q in queries_shuffled:
+            arts = _gnews_buscar(q, sector, limite=20)
+            for art in arts:
+                if art["url"] not in excluir_urls:
+                    candidatos.append(art)
+        # Quitar duplicados por URL
+        vistos = set()
+        candidatos_unicos = []
+        for art in candidatos:
+            if art["url"] not in vistos:
+                vistos.add(art["url"])
+                candidatos_unicos.append(art)
+        if candidatos_unicos:
+            # Elegir aleatoriamente del pool (no siempre el más reciente)
+            elegido = _random.choice(candidatos_unicos[:10])
+            elegido["_sector"] = sector
+            return {k: v for k, v in elegido.items() if k != "_pub"}
+
+    # Para banca y estrategia: RSS directo
+    hace_7_dias = datetime.now() - timedelta(days=7)
     feeds = list(cfg["feeds"])
     random.shuffle(feeds)
     for fuente, url in feeds:
@@ -624,14 +652,14 @@ def parsear_un_feed(sector, excluir_urls):
             feed = feedparser.parse(url)
             entradas = [e for e in feed.entries if e.get("link","") not in excluir_urls]
             random.shuffle(entradas)
-            for entry in entradas[:10]:
+            for entry in entradas[:12]:
                 published = None
                 if hasattr(entry,"published_parsed") and entry.published_parsed:
                     published = datetime(*entry.published_parsed[:6])
-                if published and published < hace_5_dias: continue
+                if published and published < hace_7_dias: continue
                 resumen = entry.get("summary", entry.get("description",""))[:400]
                 titulo = entry.get("title","")
-                if not titulo or len(resumen) < 80: continue
+                if not titulo or len(resumen) < 60: continue
                 if keywords and not es_relevante(titulo, resumen, keywords): continue
                 if not es_noticia_valida(titulo, resumen, sector): continue
                 return {"fuente": fuente, "titulo": titulo, "resumen": resumen,
@@ -639,15 +667,6 @@ def parsear_un_feed(sector, excluir_urls):
                         "fecha": published.strftime("%d/%m/%Y") if published else "reciente",
                         "imagen": extraer_imagen(entry), "_sector": sector}
         except Exception: pass
-    # Respaldo Google News para ia_negocio e ia_finanzas
-    gnews_queries = SECTORES.get(sector, {}).get("gnews", [])
-    if gnews_queries:
-        for q in gnews_queries:
-            arts = _gnews_buscar(q, sector)
-            for art in arts:
-                if art["url"] in excluir_urls: continue
-                art["_sector"] = sector
-                return {k: v for k, v in art.items() if k != "_pub"}
     return None
 
 # ── Funciones Gemini ───────────────────────────────────────────────────────────
@@ -733,7 +752,7 @@ def _gnews_buscar(query, sector, limite=15):
         pass
     return resultados
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_noticias_por_sector():
     hace_7_dias = datetime.now() - timedelta(days=7)
 
